@@ -21,6 +21,7 @@ requests
 dateparser
 
 ruff
+pytest
 
 
 
