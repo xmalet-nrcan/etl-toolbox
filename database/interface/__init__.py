@@ -1,0 +1,3 @@
+from database.interface.abstract_database_objects_handlers import AbstractDatabaseObjectsHandler
+
+__all__ = ["AbstractDatabaseObjectsHandler"]
