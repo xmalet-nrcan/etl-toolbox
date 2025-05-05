@@ -21,7 +21,7 @@
 Ruff Check -- Logging:
   extends: .base_ruff_image
   script:
-    - ruff check ./elt_logging --output-format=gitlab > code-quality-report.json
+    - ruff check ./etl_logging --output-format=gitlab > code-quality-report.json
 
   artifacts:
     reports:
@@ -30,4 +30,4 @@ Ruff Check -- Logging:
 Ruff Format:
   extends: .base_ruff_image
   script:
-    - ruff format --diff ./elt_logging
+    - ruff format --diff ./etl_logging

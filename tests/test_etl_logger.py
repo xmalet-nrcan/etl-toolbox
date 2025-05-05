@@ -6,7 +6,7 @@ import pathlib
 import shutil
 
 import pytest
-from elt_logging.etl_logger import CustomLogger
+from etl_logging.etl_logger import CustomLogger
 
 
 def test_default_logger_initialization():

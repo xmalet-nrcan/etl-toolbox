@@ -1,5 +1,6 @@
 line-length = 120
 show-fixes = true
+exclude = [".venv", ".gitlab-ci.yml"]
 
 [lint]
 select = [
@@ -18,4 +19,5 @@ select = [
     # flake8-print
     "T20"
 ]
+ignore = ["B026"]
 

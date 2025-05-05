@@ -147,16 +147,16 @@ class CustomLogger(logging.Logger):
         self.addHandler(file_handler)
         file_handler.addFilter(self._filter_logs)
 
-    def progress(self, msg: str, *args, exc_info=None, stack_info=False, stacklevel=10, extra=None):
+    def progress(self, msg: str, exc_info=None, stack_info=False, stacklevel=10, extra=None, *args, **kwargs ):
         self.log(
             level=PROGRESS_LEVELV_NUM,
             msg=msg,
-            *args,
             exc_info=exc_info,
             stack_info=stack_info,
             stacklevel=stacklevel,
             extra=extra,
+            *args, **kwargs
         )
 
-    def log(self, level, msg, *args, exc_info=None, stack_info=False, stacklevel=10, extra=None):
-        super().log(level, msg, *args, exc_info=exc_info, stack_info=stack_info, stacklevel=stacklevel, extra=extra)
+    def log(self, level, msg, exc_info=None, stack_info=False, stacklevel=10, extra=None,  *args, **kwargs):
+        super().log(level, msg,  exc_info=exc_info, stack_info=stack_info, stacklevel=stacklevel, extra=extra, *args)
