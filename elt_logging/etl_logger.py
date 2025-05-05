@@ -1,34 +1,39 @@
-import inspect
 import logging
 import os
 import pathlib
 import tempfile
-from typing import Union, override
+from typing import Union
 
 import dotenv
 
 dotenv.load_dotenv()
 
-DEFAULT_FORMATTER = logging.Formatter('%(asctime)s :: [%(name)-10s :: %(levelname)-10s]  %(module)-8s :: %(message)s',
-                                      datefmt='%Y-%m-%d %H:%M:%S')
+DEFAULT_FORMATTER = logging.Formatter(
+    "%(asctime)s :: [%(name)-10s :: %(levelname)-10s]  %(module)-8s :: %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+)
 
-VERBOSE_FORMATER = logging.Formatter('%(asctime)s :: [%(name)-10s :: %(levelname)-8s] %(module)-8s :: %(message)s',
-                                     datefmt='%Y-%m-%d %H:%M:%S')
+VERBOSE_FORMATER = logging.Formatter(
+    "%(asctime)s :: [%(name)-10s :: %(levelname)-8s] %(module)-8s :: %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+)
 
-SIMPLE_FORMATTER = logging.Formatter('%(asctime)s :: %(levelname)-8s :: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+SIMPLE_FORMATTER = logging.Formatter("%(asctime)s :: %(levelname)-8s :: %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 
-VERBOSE = bool(int(os.environ.get('VERBOSE_LOGGER', False)))
+VERBOSE = bool(int(os.environ.get("VERBOSE_LOGGER", False)))
 
-LOGGER_LEVEL = os.environ.get('LOGGER_LEVEL', logging.NOTSET)
+LOGGER_LEVEL = os.environ.get("LOGGER_LEVEL", logging.NOTSET)
 
-_LOGGING_FORMATTERS = {'default': DEFAULT_FORMATTER, 'verbose': VERBOSE_FORMATER, 'simple': SIMPLE_FORMATTER}
+_LOGGING_FORMATTERS = {"default": DEFAULT_FORMATTER, "verbose": VERBOSE_FORMATER, "simple": SIMPLE_FORMATTER}
 
-_LOGGER_TYPE = {'default': {'is_verbose': False, 'level': LOGGER_LEVEL, 'formatter': _LOGGING_FORMATTERS['default']},
-                'verbose': {'is_verbose': True, 'level': logging.DEBUG, 'formatter': _LOGGING_FORMATTERS['verbose']},
-                'simple': {'is_verbose': False, 'level': logging.INFO, 'formatter': _LOGGING_FORMATTERS['simple']},
-                'custom': {'is_verbose': VERBOSE, 'level': LOGGER_LEVEL,
-                           'formatter': _LOGGING_FORMATTERS['verbose'] if VERBOSE else _LOGGING_FORMATTERS['default']}
-                }
+_LOGGER_TYPE = {
+    "default": {"is_verbose": False, "level": LOGGER_LEVEL, "formatter": _LOGGING_FORMATTERS["default"]},
+    "verbose": {"is_verbose": True, "level": logging.DEBUG, "formatter": _LOGGING_FORMATTERS["verbose"]},
+    "simple": {"is_verbose": False, "level": logging.INFO, "formatter": _LOGGING_FORMATTERS["simple"]},
+    "custom": {
+        "is_verbose": VERBOSE,
+        "level": LOGGER_LEVEL,
+        "formatter": _LOGGING_FORMATTERS["verbose"] if VERBOSE else _LOGGING_FORMATTERS["default"],
+    },
+}
 
 PROGRESS_LEVELV_NUM = 60
 logging.addLevelName(PROGRESS_LEVELV_NUM, "PROGRESS")
@@ -61,29 +66,29 @@ class CustomLogger(logging.Logger):
 
     """
 
-    def __init__(self, name: str,
-                 logger_type: str = 'default',
-                 file_path: Union[str, pathlib.Path] = None,
-                 logger_file_name: str = 'default.log',
-                 level=LOGGER_LEVEL,
-                 ):
-
+    def __init__(
+            self,
+            name: str,
+            logger_type: str = "default",
+            file_path: Union[str, pathlib.Path] = None,
+            logger_file_name: str = "default.log",
+            level=LOGGER_LEVEL,
+    ):
         try:
-            logging_level = _LOGGER_TYPE[logger_type]['level']
-        except KeyError as k:
+            logging_level = _LOGGER_TYPE[logger_type]["level"]
+        except KeyError:
             logging_level = level
         super().__init__(name, level=logging_level)
         self._logger_type = logger_type
-        self._verbose_logger_type:bool = None
-        self.formatter:logging.Formatter = None
+        self._verbose_logger_type: bool = None
+        self.formatter: logging.Formatter = None
         self._file_path = None
 
-        self._setup_logging_file_for_output(file_path, "{}_{}".format(name, logger_file_name))
+        self._setup_logging_file_for_output(file_path, f"{name}_{logger_file_name}")
 
         self._set_logger_from_type()
 
         self._set_logger_handlers()
-
 
     def _setup_logging_file_for_output(self, logging_file_path: str = None, file_name: str = None):
         """
@@ -102,11 +107,10 @@ class CustomLogger(logging.Logger):
         """
 
         if logging_file_path is None:
-            output_path = os.getenv('LOGGING_FILE_PATH', tempfile.gettempdir())
+            output_path = os.getenv("LOGGING_FILE_PATH", tempfile.gettempdir())
         else:
             output_path = pathlib.Path(logging_file_path)
             output_path.mkdir(parents=True, exist_ok=True)
-        print(output_path)
         self._file_path = os.path.join(output_path, file_name)
 
     def _set_logger_handlers(self):
@@ -122,12 +126,12 @@ class CustomLogger(logging.Logger):
     def _set_logger_from_type(self):
         """Sets the logger's level and formatter based on the logger type.'"""
         logger_params = _LOGGER_TYPE[self._logger_type]
-        self._verbose_logger_type = bool(logger_params['is_verbose'])
+        self._verbose_logger_type = bool(logger_params["is_verbose"])
 
-        self.formatter = logger_params['formatter']
+        self.formatter = logger_params["formatter"]
 
     def _filter_logs(self, log: logging.LogRecord) -> bool:
-        """ if user sets verbose to false, only write logs that don't include 'PROGRESS'"""
+        """if user sets verbose to false, only write logs that don't include 'PROGRESS'"""
         if log.msg is None:
             return True
 
@@ -143,15 +147,16 @@ class CustomLogger(logging.Logger):
         self.addHandler(file_handler)
         file_handler.addFilter(self._filter_logs)
 
-
-
     def progress(self, msg: str, *args, exc_info=None, stack_info=False, stacklevel=10, extra=None):
-        self.log(level=PROGRESS_LEVELV_NUM,  msg =msg, *args, exc_info=exc_info, stack_info=stack_info, stacklevel=stacklevel,
-                  extra=extra)
+        self.log(
+            level=PROGRESS_LEVELV_NUM,
+            msg=msg,
+            *args,
+            exc_info=exc_info,
+            stack_info=stack_info,
+            stacklevel=stacklevel,
+            extra=extra,
+        )
 
     def log(self, level, msg, *args, exc_info=None, stack_info=False, stacklevel=10, extra=None):
-
-        super().log(level, msg, *args, exc_info=exc_info, stack_info=stack_info, stacklevel=stacklevel,
-                    extra=extra)
-
-
+        super().log(level, msg, *args, exc_info=exc_info, stack_info=stack_info, stacklevel=stacklevel, extra=extra)
