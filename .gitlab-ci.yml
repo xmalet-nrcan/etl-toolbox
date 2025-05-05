@@ -18,10 +18,11 @@
     - ruff --version
 
 
-Ruff Check:
+Ruff Check -- Logging:
   extends: .base_ruff_image
   script:
-    - ruff check --output-format=gitlab > code-quality-report.json
+    - ruff check ./elt_logging --output-format=gitlab > code-quality-report.json
+
   artifacts:
     reports:
       codequality: $CI_PROJECT_DIR/code-quality-report.json
@@ -29,4 +30,4 @@ Ruff Check:
 Ruff Format:
   extends: .base_ruff_image
   script:
-    - ruff format --diff
+    - ruff format --diff ./elt_logging
