@@ -67,12 +67,12 @@ class CustomLogger(logging.Logger):
     """
 
     def __init__(
-            self,
-            name: str,
-            logger_type: str = "default",
-            file_path: Union[str, pathlib.Path] = None,
-            logger_file_name: str = "default.log",
-            level=LOGGER_LEVEL,
+        self,
+        name: str,
+        logger_type: str = "default",
+        file_path: Union[str, pathlib.Path] = None,
+        logger_file_name: str = "default.log",
+        level=LOGGER_LEVEL,
     ):
         try:
             logging_level = _LOGGER_TYPE[logger_type]["level"]
@@ -147,7 +147,7 @@ class CustomLogger(logging.Logger):
         self.addHandler(file_handler)
         file_handler.addFilter(self._filter_logs)
 
-    def progress(self, msg: str, exc_info=None, stack_info=False, stacklevel=10, extra=None, *args, **kwargs ):
+    def progress(self, msg: str, exc_info=None, stack_info=False, stacklevel=10, extra=None, *args, **kwargs):
         self.log(
             level=PROGRESS_LEVELV_NUM,
             msg=msg,
@@ -155,8 +155,9 @@ class CustomLogger(logging.Logger):
             stack_info=stack_info,
             stacklevel=stacklevel,
             extra=extra,
-            *args, **kwargs
+            *args,
+            **kwargs,
         )
 
-    def log(self, level, msg, exc_info=None, stack_info=False, stacklevel=10, extra=None,  *args, **kwargs):
-        super().log(level, msg,  exc_info=exc_info, stack_info=stack_info, stacklevel=stacklevel, extra=extra, *args)
+    def log(self, level, msg, exc_info=None, stack_info=False, stacklevel=10, extra=None, *args, **kwargs):
+        super().log(level, msg, exc_info=exc_info, stack_info=stack_info, stacklevel=stacklevel, extra=extra, *args)

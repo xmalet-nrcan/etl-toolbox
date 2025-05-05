@@ -14,14 +14,13 @@
 
   before_script:
     - cd $CI_PROJECT_DIR
-    - ls -la
     - ruff --version
 
 
 Ruff Check -- Logging:
   extends: .base_ruff_image
   script:
-    - ruff check ./etl_logging --output-format=gitlab > code-quality-report.json
+    - ruff check ./etl_logging --fix --output-format=gitlab > code-quality-report.json
 
   artifacts:
     reports:
