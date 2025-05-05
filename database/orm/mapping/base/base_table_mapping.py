@@ -13,18 +13,16 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import ColumnProperty, InstrumentedAttribute, Query
 from sqlmodel import AutoString, SQLModel
 
-FONCTION_FILTER = 'funcs'
-ORDER_BY = 'order_by'
-LIMIT = 'limit'
-OFFSET = 'offset'
+FONCTION_FILTER = "funcs"
+ORDER_BY = "order_by"
+LIMIT = "limit"
+OFFSET = "offset"
 
 logger = Logger("SQLModels", logger_level=os.environ.get("LOG_LEVEL", "INFO"))
 
 
-
 class Base(SQLModel):
     __abstract__ = True
-
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, type(self)):
@@ -45,6 +43,7 @@ class Base(SQLModel):
     @property
     def columns(self):
         return self._get_columns()
+
     @property
     def get_identity_columns(self):
         return [i for i in self._get_columns() if self.is_identity_column(i)]
@@ -57,9 +56,10 @@ class Base(SQLModel):
     def _get_relations(cls):
         relations = []
         for attr_name, attr_value in vars(cls).items():
-            if (isinstance(attr_value, InstrumentedAttribute) and
-                    isinstance(attr_value.property, orm.RelationshipProperty)):
-                    relations.append(attr_name)
+            if isinstance(attr_value, InstrumentedAttribute) and isinstance(
+                attr_value.property, orm.RelationshipProperty
+            ):
+                relations.append(attr_name)
         return relations
 
     @classmethod
@@ -71,12 +71,11 @@ class Base(SQLModel):
 
         for cols in self._get_columns():
             if not self._is_value_null(cols) and not self.is_identity_column(cols):
-                    if self._is_default_callable(cols):
-                        if not self._is_value_equal_default_gen_col(cols):
-                            out_cols.append(cols)
-                    else:
+                if self._is_default_callable(cols):
+                    if not self._is_value_equal_default_gen_col(cols):
                         out_cols.append(cols)
-
+                else:
+                    out_cols.append(cols)
 
         return out_cols
 
@@ -110,7 +109,7 @@ class Base(SQLModel):
                     return False
         return False
 
-    def _is_default_callable(self,  column_name: str):
+    def _is_default_callable(self, column_name: str):
         if hasattr(self, column_name) and not self._is_default_value_null(column_name):
             col_attribute = getattr(type(self), column_name).property.columns[0]
             return isinstance(col_attribute.default.arg, Callable)
@@ -136,12 +135,16 @@ class Base(SQLModel):
 
     @classmethod
     def query_all_rows(cls, session):
-        return cls.query_object(session=session, condition='all')
-
-
+        return cls.query_object(session=session, condition="all")
 
     @classmethod
-    def get_query_for_object(cls, session, condition='or', funcs_conditions='and', **filters, ) -> Query:
+    def get_query_for_object(
+        cls,
+        session,
+        condition="or",
+        funcs_conditions="and",
+        **filters,
+    ) -> Query:
         query = session.query(cls)
         sub_filters = []
 
@@ -164,15 +167,14 @@ class Base(SQLModel):
 
         # Apply OR logic if there are conditions
         if sub_filters:
-            if condition == 'or':
+            if condition == "or":
                 query = query.filter(or_(*sub_filters))
-            if condition == 'and':
+            if condition == "and":
                 query = query.filter(*sub_filters)
 
-        if query.whereclause is None and condition != 'all':
+        if query.whereclause is None and condition != "all":
             return
         else:
-
             if ORDER_BY in filters:
                 query = query.order_by(filters[ORDER_BY])
             if LIMIT in filters and isinstance(filters[LIMIT], int):
@@ -181,24 +183,29 @@ class Base(SQLModel):
                 query = query.offset(filters[OFFSET])
             try:
                 compiled_query = query.statement.compile(
-                    dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True},
+                    dialect=postgresql.dialect(),
+                    compile_kwargs={"literal_binds": True},
                 )
             except Exception:
-                compiled_query = query.statement.compile(
-                    dialect=postgresql.dialect()
-                )
+                compiled_query = query.statement.compile(dialect=postgresql.dialect())
             logger.debug(f"{compiled_query}")
             return query
 
     @classmethod
-    def query_object(cls, session, condition='or', funcs_conditions='and', **filters, ):
+    def query_object(
+        cls,
+        session,
+        condition="or",
+        funcs_conditions="and",
+        **filters,
+    ):
         try:
-            return cls.get_query_for_object(session=session, condition=condition, funcs_conditions=funcs_conditions,
-                                            **filters).all()
+            return cls.get_query_for_object(
+                session=session, condition=condition, funcs_conditions=funcs_conditions, **filters
+            ).all()
         except AttributeError as e:
             logger.error(e)
             return None
-
 
     @classmethod
     def execute_query(cls, session, query: Query):
@@ -220,30 +227,30 @@ class Base(SQLModel):
 
         Returns:
         str: The prepared string with accented characters replaced by underscores.
-    """
+        """
         if isinstance(input_string, list):
-            input_string = ''.join(input_string)
-        normalized_string = unicodedata.normalize('NFKD', input_string)
-        prepared_string = ''
+            input_string = "".join(input_string)
+        normalized_string = unicodedata.normalize("NFKD", input_string)
+        prepared_string = ""
 
         for char in normalized_string:
             if unicodedata.combining(char):  # If the character is a combining mark (e.g., accent)
-                prepared_string = prepared_string[:-1] + '_'
+                prepared_string = prepared_string[:-1] + "_"
             else:
                 prepared_string += char
-        return unicodedata.normalize('NFC', prepared_string)
+        return unicodedata.normalize("NFC", prepared_string)
 
     @classmethod
     def _formatted_parameter(cls, parameter: str) -> str:
         """Format parameter for SQL LIKE query."""
         parameter_norm = cls.remove_accents_characters_from_string(parameter)
-        if parameter_norm == '%':
-            return '%'
+        if parameter_norm == "%":
+            return "%"
         return f"%{parameter_norm.lower()}%"
 
     @classmethod
     def _is_like(self, col: InstrumentedAttribute, parameter: str = None):
-        if parameter == '%':
+        if parameter == "%":
             return
         if parameter is not None:
             return func.lower(col).like(self._formatted_parameter(parameter))
@@ -283,7 +290,7 @@ class Base(SQLModel):
 @compiles(WKBElement, "postgresql")
 def compile_wkb(element, compiler, **kw):
     # TODO : replace with logging debug
-    #print("COMPILE_WKB")
+    # print("COMPILE_WKB")
     wkt = element.desc  # à vérifier selon votre version/usage
     srid = element.srid if hasattr(element, "srid") else 4326  # valeur par défaut si nécessaire
     return f"ST_GeomFromText('{wkt}', {srid})"

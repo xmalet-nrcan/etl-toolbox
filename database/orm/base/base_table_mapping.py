@@ -10,15 +10,18 @@ from sqlalchemy import String, Text, func, or_
 from sqlalchemy.orm import ColumnProperty, InstrumentedAttribute, Query
 from sqlmodel import AutoString, SQLModel
 
-FONCTION_FILTER = 'funcs'
-ORDER_BY = 'order_by'
-LIMIT = 'limit'
-OFFSET = 'offset'
+FONCTION_FILTER = "funcs"
+ORDER_BY = "order_by"
+LIMIT = "limit"
+OFFSET = "offset"
 
-logger = Logger("SQLModels"
-                , logger_level=os.environ.get("LOG_LEVEL", "DEBUG")
-                , file_path=OUTPATH_PATHLIB
-                , logger_file_name='SQLModels.log')
+logger = Logger(
+    "SQLModels",
+    logger_level=os.environ.get("LOG_LEVEL", "DEBUG"),
+    file_path=OUTPATH_PATHLIB,
+    logger_file_name="SQLModels.log",
+)
+
 
 class Base(SQLModel):
     __abstract__ = True
@@ -41,10 +44,16 @@ class Base(SQLModel):
 
     @classmethod
     def query_all_rows(cls, session):
-        return cls.query_object(session=session, condition='all')
+        return cls.query_object(session=session, condition="all")
 
     @classmethod
-    def get_query_for_object(cls, session, condition='or', funcs_conditions='and', **filters, ) -> Query:
+    def get_query_for_object(
+        cls,
+        session,
+        condition="or",
+        funcs_conditions="and",
+        **filters,
+    ) -> Query:
         query = session.query(cls)
         sub_filters = []
 
@@ -53,8 +62,7 @@ class Base(SQLModel):
             if value is not None and hasattr(cls, attr):
                 # Add equality and "LIKE" conditions
                 column_attr = getattr(cls, attr)
-                if (isinstance(column_attr, InstrumentedAttribute) and
-                        isinstance(column_attr.property, ColumnProperty)):
+                if isinstance(column_attr, InstrumentedAttribute) and isinstance(column_attr.property, ColumnProperty):
                     if isinstance(value, list):
                         for v in value:
                             cls.add_value_to_sub_query(column_attr, sub_filters, v)
@@ -68,15 +76,14 @@ class Base(SQLModel):
 
         # Apply OR logic if there are conditions
         if sub_filters:
-            if condition == 'or':
+            if condition == "or":
                 query = query.filter(or_(*sub_filters))
-            if condition == 'and':
+            if condition == "and":
                 query = query.filter(*sub_filters)
 
-        if query.whereclause is None and condition != 'all':
+        if query.whereclause is None and condition != "all":
             return
         else:
-
             if ORDER_BY in filters:
                 query = query.order_by(filters[ORDER_BY])
             if LIMIT in filters and isinstance(filters[LIMIT], int):
@@ -91,10 +98,17 @@ class Base(SQLModel):
             return query
 
     @classmethod
-    def query_object(cls, session, condition='or', funcs_conditions='and', **filters, ):
+    def query_object(
+        cls,
+        session,
+        condition="or",
+        funcs_conditions="and",
+        **filters,
+    ):
         try:
-            return cls.get_query_for_object(session=session, condition=condition, funcs_conditions=funcs_conditions,
-                                            **filters).all()
+            return cls.get_query_for_object(
+                session=session, condition=condition, funcs_conditions=funcs_conditions, **filters
+            ).all()
         except AttributeError:
             return None
 
@@ -118,29 +132,29 @@ class Base(SQLModel):
 
         Returns:
         str: The prepared string with accented characters replaced by underscores.
-    """
-        normalized_string = unicodedata.normalize('NFKD', input_string)
-        prepared_string = ''
+        """
+        normalized_string = unicodedata.normalize("NFKD", input_string)
+        prepared_string = ""
 
         for char in normalized_string:
             if unicodedata.combining(char):  # If the character is a combining mark (e.g., accent)
-                prepared_string = prepared_string[:-1] + '_'
+                prepared_string = prepared_string[:-1] + "_"
             else:
                 prepared_string += char
 
-        return unicodedata.normalize('NFC', prepared_string)
+        return unicodedata.normalize("NFC", prepared_string)
 
     @classmethod
     def _formatted_parameter(cls, parameter: str) -> str:
         """Format parameter for SQL LIKE query."""
         parameter_norm = cls.remove_accents_characters_from_string(parameter)
-        if parameter_norm == '%':
-            return '%'
+        if parameter_norm == "%":
+            return "%"
         return f"%{parameter_norm.lower()}%"
 
     @classmethod
     def _is_like(self, col: InstrumentedAttribute, parameter: str = None):
-        if parameter == '%':
+        if parameter == "%":
             return
         if parameter is not None:
             return func.lower(col).like(self._formatted_parameter(parameter))

@@ -43,4 +43,4 @@ Ruff Check -- Database:
 Ruff Format -- Database:
   extends: .base_ruff_image
   script:
-    - ruff format --diff ./database
+    - ruff format ./database
