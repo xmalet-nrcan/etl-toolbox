@@ -18,7 +18,7 @@
 
 
 Ruff Check:
-  extends: .base_ruff
+  extends: .base_ruff_image
   script:
     - ruff check --output-format=gitlab > code-quality-report.json
   artifacts:
@@ -26,6 +26,6 @@ Ruff Check:
       codequality: $CI_PROJECT_DIR/code-quality-report.json
 
 Ruff Format:
-  extends: .base_ruff
+  extends: .base_ruff_image
   script:
     - ruff format --diff
