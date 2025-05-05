@@ -20,13 +20,27 @@
 Ruff Check -- Logging:
   extends: .base_ruff_image
   script:
-    - ruff check ./etl_logging --fix --output-format=gitlab > code-quality-report.json
+    - ruff check ./etl_logging --fix --output-format=gitlab > code-quality-report_etl_logging.json
 
   artifacts:
     reports:
-      codequality: $CI_PROJECT_DIR/code-quality-report.json
+      codequality: $CI_PROJECT_DIR/code-quality-report_etl_logging.json
 
-Ruff Format:
+Ruff Format -- Logging:
   extends: .base_ruff_image
   script:
     - ruff format --diff ./etl_logging
+
+Ruff Check -- Database:
+  extends: .base_ruff_image
+  script:
+    - ruff check ./database --fix --output-format=gitlab > code-quality-report_database.json
+
+  artifacts:
+    reports:
+      codequality: $CI_PROJECT_DIR/code-quality-report_database.json
+
+Ruff Format -- Database:
+  extends: .base_ruff_image
+  script:
+    - ruff format --diff ./database
