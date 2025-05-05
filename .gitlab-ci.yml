@@ -1,5 +1,5 @@
 .base_ruff_image:
-  stage: test
+  stage: build
 
   rules:
     - if: "$CI_PIPELINE_SOURCE == 'merge_request_event'"
@@ -8,11 +8,11 @@
     - if: "$CI_PIPELINE_SOURCE == 'push' && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH # RUN QUALITY JOB IN PIPELINE ON THE DEFAULT BRANCH(BUT NOT IN OTHER BRANCH)
 
-  image: "python:3.10"
+  interruptible: true
+  image:
+    name: ghcr.io/astral-sh/ruff:0.11.8-alpine
 
   before_script:
-    - 'pip3 install ruff'
-    - 'pip3 install -r requirements.txt'
     - cd $CI_PROJECT_DIR
     - ls -la
     - ruff --version
