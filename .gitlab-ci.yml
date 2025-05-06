@@ -6,6 +6,9 @@ stages:
 
 .base_python_image:
   image: python:3.12
+  script:
+    - pip install poetry pytest
+
 
 
 .base_ruff_image:
@@ -81,10 +84,7 @@ Test package:
   extends: .base_python_image
   stage: test
   script:
-    - pip install poetry pytest
-    - poetry install
-    - cd tests
-    - pytest -v
+    - python -m pytest -v tests/
 
 Build and publish package:
   extends: .base_python_image
