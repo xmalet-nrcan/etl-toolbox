@@ -1,5 +1,5 @@
 .base_ruff_image:
-  stage: build
+  stage: test
 
   rules:
     - if: "$CI_PIPELINE_SOURCE == 'merge_request_event'"
@@ -44,3 +44,19 @@ Ruff Format -- Database:
   extends: .base_ruff_image
   script:
     - ruff format ./database
+
+build_package:
+  stage: build
+  image: python:3.12  # Utilisation d'une image avec Python installé
+  script:
+    - pip install poetry
+    - poetry config repositories.gitlab "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi"
+    - poetry config http-basic.gitlab gitlab-ci-token "$CI_JOB_TOKEN"
+    - poetry config virtualenvs.create false  # Pour installer les dépendances dans l'environnement actuel
+    - poetry install --no-dev  # Installer uniquement les dépendances de production
+    - poetry build  # Construire le package (génère un wheel et une source distribution dans le dossier dist/)
+    - poetry publish --repository gitlab
+  artifacts:
+    paths:
+      - dist/  # Le dossier généré contenant les packages
+
