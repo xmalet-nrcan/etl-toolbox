@@ -4,6 +4,8 @@ stages:
   - test
   - build
 
+.base_python_image:
+  image: python:3.12
 
 
 .base_ruff_image:
@@ -76,16 +78,17 @@ delete_pypi_package:
       fi
 
 Test package:
+  extends: .base_python_image
   stage: test
-  image: python:3.12
   script:
     - pip install poetry
+    - poetry install
     - cd tests
     - pytest -v
 
 Build and publish package:
+  extends: .base_python_image
   stage: build
-  image: python:3.12  # Utilisation d'une image avec Python installé
 
   script:
     - pip install poetry
