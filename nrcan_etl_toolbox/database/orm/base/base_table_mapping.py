@@ -58,7 +58,7 @@ class Base(SQLModel):
         relations = []
         for attr_name, attr_value in vars(cls).items():
             if isinstance(attr_value, InstrumentedAttribute) and isinstance(
-                    attr_value.property, orm.RelationshipProperty
+                attr_value.property, orm.RelationshipProperty
             ):
                 relations.append(attr_name)
         return relations
@@ -140,10 +140,10 @@ class Base(SQLModel):
 
     @classmethod
     def get_query_for_object(
-            cls,
-            session,
-            condition="or",
-            **filters,
+        cls,
+        session,
+        condition="or",
+        **filters,
     ) -> Query:
         query = session.query(cls)
         sub_filters = []
@@ -193,11 +193,11 @@ class Base(SQLModel):
 
     @classmethod
     def query_object(
-            cls,
-            session,
-            condition="or",
-            funcs_conditions="and",
-            **filters,
+        cls,
+        session,
+        condition="or",
+        funcs_conditions="and",
+        **filters,
     ):
         try:
             return cls.get_query_for_object(

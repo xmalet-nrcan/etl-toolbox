@@ -5,4 +5,5 @@ __all__ = [
     "FONCTION_FILTER",
     "OFFSET",
     "ORDER_BY",
-    "LIMIT",]
+    "LIMIT",
+]

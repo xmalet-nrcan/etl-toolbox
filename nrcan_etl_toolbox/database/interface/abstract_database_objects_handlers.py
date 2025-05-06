@@ -166,21 +166,21 @@ class AbstractDatabaseObjectsInterface:
 
             return data
 
-    def _get_or_create_element(self,
-                               dict_element: str,
-                               table_model: type[Base],
-                               condition="and", **kwargs) -> list[Base] | None:
+    def _get_or_create_element(
+        self, dict_element: str, table_model: type[Base], condition="and", **kwargs
+    ) -> list[Base] | None:
         with Session(AbstractDatabaseObjectsInterface.engine) as session:
             try:
                 data = self._get_element_in_database(table_model=table_model, condition=condition, **kwargs)
                 if data is not None and len(data) == 0:
-                    data = self._get_element_to_be_inserted(dict_element=dict_element, table_model=table_model,
-                                                            **kwargs)
+                    data = self._get_element_to_be_inserted(
+                        dict_element=dict_element, table_model=table_model, **kwargs
+                    )
             except Exception as e:
                 session.rollback()
                 self.logger.warning(
-                    f"ON _get_or_create_element with \n{table_model}, {condition}, {kwargs} \nRAISED {e}",
-                    stacklevel=3)
+                    f"ON _get_or_create_element with \n{table_model}, {condition}, {kwargs} \nRAISED {e}", stacklevel=3
+                )
             else:
                 if data is not None:
                     if len(data) == 0:
@@ -222,11 +222,11 @@ class AbstractDatabaseObjectsInterface:
                 self.logger.debug(f"Associated {elt} to {associate_to}")
 
     def _get_similarity_func_and_order_by_for_column(
-            self,
-            column: str | list[str] | InstrumentedAttribute | list[InstrumentedAttribute],
-            element: str,
-            similarity_filter: float = 0.3,
-            result_limit: int = 10,
+        self,
+        column: str | list[str] | InstrumentedAttribute | list[InstrumentedAttribute],
+        element: str,
+        similarity_filter: float = 0.3,
+        result_limit: int = 10,
     ) -> dict:
         """
         Generates a dictionary containing a similarity function, an order by
@@ -271,8 +271,8 @@ class AbstractDatabaseObjectsInterface:
 
     @staticmethod
     def _get_similarity_func(
-            in_col: str | InstrumentedAttribute,
-            text_to_compare: str,
+        in_col: str | InstrumentedAttribute,
+        text_to_compare: str,
     ):
         return func.similarity(in_col, text_to_compare)
 

@@ -37,5 +37,3 @@ def test_logger_file_path_creation():
     assert temp_dir.exists()
     del logger
     shutil.rmtree(temp_dir, ignore_errors=True)
-
-
