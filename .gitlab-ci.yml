@@ -52,8 +52,8 @@ build_package:
     - pip install poetry
     - poetry config repositories.gitlab "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi"
     - poetry config http-basic.gitlab gitlab-ci-token "$CI_JOB_TOKEN"
-    - poetry config virtualenvs.create false  # Pour installer les dépendances dans l'environnement actuel
-    - poetry install --no-dev  # Installer uniquement les dépendances de production
+    - poetry config virtualenvs.create false  
+    - poetry install 
     - poetry build  # Construire le package (génère un wheel et une source distribution dans le dossier dist/)
     - poetry publish --repository gitlab
   artifacts:
