@@ -1,20 +1,22 @@
+import re
 import unicodedata
 from collections import defaultdict
 from typing import Union
 
 import sqlalchemy.engine
-from firescan_modules.database_interface.orm import FONCTION_FILTER, LIMIT, ORDER_BY, Base
-from firescan_modules.utils.config import logger as config_logger
 from psycopg2.errors import UniqueViolation
 from sqlalchemy import create_engine, func
 from sqlalchemy.exc import DataError, IntegrityError
-from sqlalchemy.orm import InstrumentedAttribute, sessionmaker
+from sqlalchemy.orm import InstrumentedAttribute, Session
+
+from database.orm import FONCTION_FILTER, LIMIT, ORDER_BY, Base
+from etl_logging import CustomLogger
 
 
-class AbstractDatabaseObjectsHandler:
+class AbstractDatabaseObjectsInterface:
     engine: sqlalchemy.engine.Engine = None
-    session: sqlalchemy.orm.session.Session = None
-    logger = config_logger
+    # session: sqlalchemy.orm.session.Session = None
+    logger = CustomLogger("database_objects_handler", logger_type="default")
 
     def __init__(self, database_url: str, db_objects_to_treat: list = None, logger_level="DEBUG"):
         if db_objects_to_treat is None:
@@ -23,13 +25,8 @@ class AbstractDatabaseObjectsHandler:
 
         self._database_objects_to_treat = db_objects_to_treat
         # Ensure the database connection is initialized only once
-        if AbstractDatabaseObjectsHandler.engine is None or AbstractDatabaseObjectsHandler.session is None:
+        if AbstractDatabaseObjectsInterface.engine is None:  # or AbstractDatabaseObjectsInterface.session is None:
             self._connect_to_database(database_url)
-            self.logger.debug(
-                f"Instantiated new connection to server {self.engine.url.host} "
-                f"with database {self.engine.url.database} "
-                f"(user : {self.engine.url.username})"
-            )
         self.logger.debug(
             f"Connected to server {self.engine.url.host} "
             f"with database {self.engine.url.database} "
@@ -42,39 +39,50 @@ class AbstractDatabaseObjectsHandler:
 
         self._max_number_of_retry = 10
 
+    def clear_database_objects(self):
+        for obj_type in self._database_objects_to_treat:
+            self._database_objects[obj_type].clear()
+
     def _connect_to_database(self, database_url):
         """Connect to the database."""
-        AbstractDatabaseObjectsHandler.engine = create_engine(database_url)
-        Session = sessionmaker(bind=AbstractDatabaseObjectsHandler.engine)
-        AbstractDatabaseObjectsHandler.session = Session()
-        Base.metadata.create_all(AbstractDatabaseObjectsHandler.engine)
+        AbstractDatabaseObjectsInterface.engine = create_engine(database_url)
+        # Session = sessionmaker(bind=AbstractDatabaseObjectsInterface.engine)
+        # AbstractDatabaseObjectsInterface.session = Session()
+        Base.metadata.create_all(AbstractDatabaseObjectsInterface.engine)
         self.logger.info("Connected to database")
 
     def _insert_object(self, db_object: Base):
-        try:
-            # Ajout d'un seul objet à la session
-            self.logger.debug(db_object)
-            self.session.add(db_object)
-            self.session.commit()
-            return True
-        except UniqueViolation as v:
-            self.session.rollback()
-            self.logger.error(f"UniqueViolation - {db_object} \n{v}", stacklevel=3)
-            raise v
+        with Session(AbstractDatabaseObjectsInterface.engine) as session:
+            try:
+                # Ajout d'un seul objet à la session
+                self.logger.debug(db_object)
+                session.add(db_object)
+                session.commit()
+                return True
+            except UniqueViolation as v:
+                session.rollback()
+                self.logger.error(f"UniqueViolation - {db_object} \n{v}", stacklevel=3)
+                raise v
 
-        except IntegrityError as e:
-            self.session.rollback()
-            if isinstance(e.orig, UniqueViolation):
-                raise e.orig from e
-            else:
-                # Annule les modifications en cas d'erreur d'intégrité
-                self.session.rollback()
-                self.logger.error(f"IntegrityError - {db_object} \n{e}", stacklevel=3)
+            except IntegrityError as e:
+                session.rollback()
+                if isinstance(e.orig, UniqueViolation):
+                    if isinstance(e.orig, UniqueViolation):
+                        constraint_match = re.search(r"unique « (.*?) »", str(e.args))
+                        contraint_name = constraint_match.group(1) if constraint_match else None
+                        if "uni_" in contraint_name or "pk_" in contraint_name:
+                            return True
+                        else:
+                            raise e
+                else:
+                    # Annule les modifications en cas d'erreur d'intégrité
+                    session.rollback()
+                    self.logger.error(f"IntegrityError - {db_object} \n{e}", stacklevel=3)
 
-        except Exception as e:
-            # Annule les modifications pour toute autre erreur
-            self.session.rollback()
-            raise e from e
+            except Exception as e:
+                # Annule les modifications pour toute autre erreur
+                session.rollback()
+                raise e from e
 
     def insert_object(self, db_object: Base):
         return self._insert_object(db_object)
@@ -83,7 +91,7 @@ class AbstractDatabaseObjectsHandler:
         """Insert data into the database."""
         all_are_empty = all(len(self._database_objects[obj_type]) == 0 for obj_type in self._database_objects_to_treat)
         if all_are_empty:
-            self.logger.info("No data to insert")
+            self.logger.debug("No data to insert")
             return
         for obj_type in self._database_objects_to_treat:
             objects = self._database_objects[obj_type].copy()
@@ -94,21 +102,21 @@ class AbstractDatabaseObjectsHandler:
                 except UniqueViolation as v:
                     i = 0
                     self.logger.error(f"UniqueViolation - {obj} \n{v}")
-                    self.logger.info("Trying to re-insert object")
+                    self.logger.debug("Trying to re-insert object")
                     while i < self._max_number_of_retry:
-                        self.logger.info(f"Try nb : {i + 1}")
+                        self.logger.debug(f"Try nb : {i + 1}")
                         try:
                             is_inserted = self._insert_object(obj)
                         except UniqueViolation as v:
                             i = i + 1
                         else:
-                            self.logger.info(f"Successfully inserted {obj} after {i + 1} tries")
+                            self.logger.debug(f"Successfully inserted {obj} after {i + 1} tries")
                             break
                 except Exception as e:
                     self.logger.error(f"Unexpected error while inserting {obj_type}: {e}")
                     raise e
                 else:
-                    self.logger.info(f"Successfully inserted {obj_type}")
+                    self.logger.debug(f"Successfully inserted {obj_type}")
                 finally:
                     if is_inserted:
                         self._database_objects[obj_type].remove(obj)
@@ -129,6 +137,8 @@ class AbstractDatabaseObjectsHandler:
         Returns:
         str: The prepared string with accented characters replaced by underscores.
         """
+        if isinstance(input_string, list):
+            input_string = "".join(input_string)
         normalized_string = unicodedata.normalize("NFKD", input_string)
         prepared_string = "".join("_" if unicodedata.combining(char) else char for char in normalized_string)
         return prepared_string
@@ -143,34 +153,59 @@ class AbstractDatabaseObjectsHandler:
         if parameter is not None:
             return func.lower(col).like(self._formatted_parameter(parameter))
 
-    def _get_element(self, table_model: type[Base], condition="or", **kwargs):
-        try:
-            data = table_model.query_object(session=self.session, condition=condition, **kwargs)
-        except DataError:
-            self.session.rollback()
+    def _get_element_in_database(self, table_model: type[Base], condition="or", **kwargs):
+        with Session(AbstractDatabaseObjectsInterface.engine) as session:
+            try:
+                data = table_model.query_object(session=session, condition=condition, **kwargs)
+            except DataError:
+                session.rollback()
 
-            return None
-        except Exception:
-            self.session.rollback()
-            return None
+                return None
+            except Exception:
+                session.rollback()
+                return None
 
-        return data
+            return data
 
-    def _get_or_create_element(self, dict_element: str, table_model: type[Base], condition="or", **kwargs):
-        try:
-            data = self._get_element(table_model=table_model, condition=condition, **kwargs)
-        except Exception as e:
-            self.session.rollback()
-            self.logger.warning(
-                f"ON _get_or_create_element with \n{table_model}, {condition}, {kwargs} \nRAISED {e}", stacklevel=3
-            )
-        else:
-            if len(data) == 0:
-                return self._create_element(dict_element, table_model, **kwargs)
-            elif len(data) == 1:
-                return data[0]
+    def _get_or_create_element(self,
+                               dict_element: str,
+                               table_model: type[Base],
+                               condition="and", **kwargs) -> Union[list[Base], None]:
+        with Session(AbstractDatabaseObjectsInterface.engine) as session:
+            try:
+                data = self._get_element_in_database(table_model=table_model, condition=condition, **kwargs)
+                if data is not None and len(data) == 0:
+                    data = self._get_element_to_be_inserted(dict_element=dict_element, table_model=table_model,
+                                                            **kwargs)
+            except Exception as e:
+                session.rollback()
+                self.logger.warning(
+                    f"ON _get_or_create_element with \n{table_model}, {condition}, {kwargs} \nRAISED {e}",
+                    stacklevel=3)
             else:
-                raise Exception(f"More than one {table_model.__name__} found with the same parameters")
+                if data is not None:
+                    if len(data) == 0:
+                        return [self._create_element(dict_element, table_model, **kwargs)]
+                    elif len(data) <= 1:
+                        return data
+
+                        # raise Exception(f"More than one {table_model.__name__} found with the same parameters")
+                else:
+                    return data
+
+    def _get_element_to_be_inserted(self, dict_element: str, table_model: type[Base], **kwargs):
+        to_return = []
+        in_dict_elements = {k: v for k, v in kwargs.items() if v is not None and not table_model.is_identity_column(k)}
+        for elt in self._database_objects[dict_element]:
+            is_to_return = True
+            if isinstance(elt, table_model):
+                for i in in_dict_elements:
+                    if getattr(elt, i) != in_dict_elements[i]:
+                        is_to_return = False
+                        break
+                if is_to_return:
+                    to_return.append(elt)
+        return to_return
 
     def _create_element(self, dict_element: str, table_model: type[Base], **kwargs):
         t = table_model()
@@ -187,13 +222,13 @@ class AbstractDatabaseObjectsHandler:
                 associate_to.append(elt)
                 self.logger.debug(f"Associated {elt} to {associate_to}")
 
-    @staticmethod
     def _get_similarity_func_and_order_by_for_column(
-        column: Union[str, list[str], InstrumentedAttribute, list[InstrumentedAttribute]],
-        element: str,
-        similarity_filter: float = 0.3,
-        result_limit: int = 10,
-    ):
+            self,
+            column: Union[str, list[str], InstrumentedAttribute, list[InstrumentedAttribute]],
+            element: str,
+            similarity_filter: float = 0.3,
+            result_limit: int = 10,
+    ) -> dict:
         """
         Generates a dictionary containing a similarity function, an order by
         clause, and a limit based on the given parameters to compute
@@ -208,26 +243,24 @@ class AbstractDatabaseObjectsHandler:
                 Defaults to 10.
 
         Returns:
-            dict: A dictionary with the keys FONCTION_FILTER, ORDER_BY, and LIMIT.
-                The FONCTION_FILTER key maps to a list containing the similarity
-                threshold condition. The ORDER_BY key maps to a descending order
-                by similarity function. The LIMIT key maps to the maximum number
-                of results specified by result_limit.
+            dict:
+                A dictionary containing three keys:
+                  - `FONCTION_FILTER`: A list of boolean conditions applied on similarity metrics or an
+                    empty dictionary if no valid similarity functions are created.
+                  - `ORDER_BY`: The criterion for ordering results, such as descending order of the first
+                    similarity function, or None if no similarity functions are available.
+                  - `LIMIT`: The result limit constraint, by default set to result_limit.
+
+        Raises:
+            None
         """
 
-        def get_similarity_func_for_col(
-            in_col: Union[str, InstrumentedAttribute],
-            text_to_compare: str,
-        ):
-            similarity_func = func.similarity(in_col, text_to_compare)
-            return similarity_func
-
         similarity_funcs = []
-        if isinstance(column, (str, InstrumentedAttribute)):
-            similarity_funcs.append(get_similarity_func_for_col(column, element))
+        if isinstance(column, (InstrumentedAttribute, str)):
+            similarity_funcs.append(self._get_similarity_func(column, element))
         elif isinstance(column, list):
             for col in column:
-                similarity_funcs.append(get_similarity_func_for_col(col, element))
+                similarity_funcs.append(self._get_similarity_func(col, element))
         if len(similarity_funcs) == 0:
             return {FONCTION_FILTER: {}, ORDER_BY: None, LIMIT: result_limit}
         else:
@@ -236,3 +269,44 @@ class AbstractDatabaseObjectsHandler:
                 ORDER_BY: sqlalchemy.desc(similarity_funcs[0]),
                 LIMIT: result_limit,
             }
+
+    @staticmethod
+    def _get_similarity_func(
+            in_col: Union[str, InstrumentedAttribute],
+            text_to_compare: str,
+    ):
+        return func.similarity(in_col, text_to_compare)
+
+    @staticmethod
+    def _get_bool_op_filter(in_col: InstrumentedAttribute, text_to_compare: str, operator: str):
+        return in_col.bool_op(operator)(text_to_compare)
+
+    def _get_similarity_bool_op(self, in_col: InstrumentedAttribute, text_to_compare: str):
+        """
+        Gets a boolean operation filter for similarity comparison of a given
+        column value against a provided text.
+
+        Parameters:
+        in_col : InstrumentedAttribute
+            The database column or ORM-mapped attribute to be compared.
+        text_to_compare : str
+            The string text to compare with the column value.
+        """
+        return self._get_bool_op_filter(in_col, text_to_compare, "%")
+
+    def _get_word_similarity_bool_op(self, in_col: InstrumentedAttribute, text_to_compare: str):
+        """
+        Gets a boolean operation filter based on word similarity.
+
+        This method constructs a filter for comparing the similarity of words
+        between an input column and a text string. The comparison is performed
+        using a pre-defined boolean operation that is specified for internal use.
+
+        Args:
+            in_col (InstrumentedAttribute): The database column containing the text
+                data to compare against.
+            text_to_compare (str): The string of text to compare for similarity
+                with the content of the `in_col`.
+
+        """
+        return self._get_bool_op_filter(in_col, text_to_compare, "<%")
