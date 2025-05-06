@@ -52,13 +52,14 @@ Ruff Format -- Database:
 delete_old_package:
   stage:
     - .pre
-  script:
-    - 'curl --request DELETE --header "JOB-TOKEN: $CI_JOB_TOKEN" "https://gitlab.com/api/v4/projects/${CI_PROJECT_ID}/packages/xm_nrcan_etl_toolbox "'
+
 
 
 build_package:
   stage: build
   image: python:3.12  # Utilisation d'une image avec Python installé
+  before_script:
+    - 'curl --request DELETE --header "JOB-TOKEN: $CI_JOB_TOKEN" "https://gitlab.com/api/v4/projects/${CI_PROJECT_ID}/packages/xm_nrcan_etl_toolbox"'
   script:
     - pip install poetry
     - poetry config repositories.gitlab "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi"
