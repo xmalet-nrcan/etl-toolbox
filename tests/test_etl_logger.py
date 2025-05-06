@@ -5,7 +5,6 @@ import os
 import pathlib
 import shutil
 
-import pytest
 from etl_logging.etl_logger import CustomLogger
 
 
@@ -14,6 +13,14 @@ def test_default_logger_initialization():
     assert logger.name == "test_logger"
     assert logger._logger_type == "default"
     assert isinstance(logger.formatter, logging.Formatter)
+
+
+def test_logger_basic_initialization():
+    logger = CustomLogger(name="basic_logger")
+    assert logger.name == "basic_logger"
+    assert logger._logger_type == "default"
+    assert logger.level == logging.NOTSET
+    assert logger.formatter._fmt == "%(asctime)s :: [%(name)-10s :: %(levelname)-10s]  %(module)-8s :: %(message)s"
 
 
 def test_logger_with_custom_type():
@@ -32,9 +39,3 @@ def test_logger_file_path_creation():
     shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-
-
-
-def test_logger_file_handler():
-    temp_dir = pathlib.Path("test_handlers")
-    logger = CustomLogger(name="file_handler_logger", file_path=temp_dir)
