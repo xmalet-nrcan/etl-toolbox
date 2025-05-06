@@ -84,7 +84,7 @@ Test package:
     - pip install poetry
     - poetry install
     - cd tests
-    - pytest -v
+    - python -m pytest -v
 
 Build and publish package:
   extends: .base_python_image
