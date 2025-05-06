@@ -1,5 +1,6 @@
 stages:
   - test
+  - cleanup
   - build
 
 .base_ruff_image:
@@ -49,11 +50,20 @@ Ruff Format -- Database:
   script:
     - ruff format ./nrcan_etl_toolbox/database
 
+
+
+delete_pypi_package:
+  stage: cleanup
+  script:
+    - echo "Récupération de l'URL de suppression du package PyPI..."
+    - DELETE_URL=$(curl --silent --header "JOB-TOKEN: $CI_JOB_TOKEN" "https://gitlab.com/api/v4/projects/69578726/packages" | jq -r '.[] | select(.package_type == "pypi") | ._links.delete_api_path')
+    - echo "URL à supprimer: $DELETE_URL"
+    - if [ -n "$DELETE_URL" ]; then curl --request DELETE --header "JOB-TOKEN: $CI_JOB_TOKEN" "$DELETE_URL"; else echo "Aucun package PyPI à supprimer."; fi
+
 build_package:
   stage: build
   image: python:3.12  # Utilisation d'une image avec Python installé
-  before_script:
-    - 'curl --request DELETE --header "JOB-TOKEN: $CI_JOB_TOKEN" "https://gitlab.com/api/v4/projects/${CI_PROJECT_ID}/packages/38645739"'
+
   script:
     - pip install poetry
     - poetry config repositories.gitlab "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi"
