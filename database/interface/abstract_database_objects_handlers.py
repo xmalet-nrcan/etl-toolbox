@@ -1,7 +1,6 @@
 import re
 import unicodedata
 from collections import defaultdict
-from typing import Union
 
 import sqlalchemy.engine
 from psycopg2.errors import UniqueViolation
@@ -170,7 +169,7 @@ class AbstractDatabaseObjectsInterface:
     def _get_or_create_element(self,
                                dict_element: str,
                                table_model: type[Base],
-                               condition="and", **kwargs) -> Union[list[Base], None]:
+                               condition="and", **kwargs) -> list[Base] | None:
         with Session(AbstractDatabaseObjectsInterface.engine) as session:
             try:
                 data = self._get_element_in_database(table_model=table_model, condition=condition, **kwargs)
@@ -224,7 +223,7 @@ class AbstractDatabaseObjectsInterface:
 
     def _get_similarity_func_and_order_by_for_column(
             self,
-            column: Union[str, list[str], InstrumentedAttribute, list[InstrumentedAttribute]],
+            column: str | list[str] | InstrumentedAttribute | list[InstrumentedAttribute],
             element: str,
             similarity_filter: float = 0.3,
             result_limit: int = 10,
@@ -272,7 +271,7 @@ class AbstractDatabaseObjectsInterface:
 
     @staticmethod
     def _get_similarity_func(
-            in_col: Union[str, InstrumentedAttribute],
+            in_col: str | InstrumentedAttribute,
             text_to_compare: str,
     ):
         return func.similarity(in_col, text_to_compare)

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import unicodedata
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from geoalchemy2 import WKBElement
 from shapely.geometry.base import BaseGeometry

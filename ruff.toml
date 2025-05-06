@@ -19,5 +19,5 @@ select = [
     # flake8-print
     "T20"
 ]
-ignore = ["B026"]
+ignore = ["B026", "UP038"]
 
