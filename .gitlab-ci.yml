@@ -54,11 +54,22 @@ Ruff Format -- Database:
 
 delete_pypi_package:
   stage: cleanup
+  image: curlimages/curl:latest  # image légère contenant curl
+
   script:
-    - echo "Récupération de l'URL de suppression du package PyPI..."
-    - DELETE_URL=$(curl --silent --header "JOB-TOKEN: $CI_JOB_TOKEN" "https://gitlab.com/api/v4/projects/69578726/packages" | jq -r '.[] | select(.package_type == "pypi") | ._links.delete_api_path')
-    - echo "URL à supprimer: $DELETE_URL"
-    - if [ -n "$DELETE_URL" ]; then curl --request DELETE --header "JOB-TOKEN: $CI_JOB_TOKEN" "$DELETE_URL"; else echo "Aucun package PyPI à supprimer."; fi
+    - echo "Recherche du package PyPI à supprimer..."
+    - >
+      DELETE_URL=$(curl --silent --header "JOB-TOKEN: $CI_JOB_TOKEN"
+      "https://gitlab.com/api/v4/projects/$CI_PROJECT_ID/packages"
+      | grep -o '"package_type":"pypi".*?"delete_api_path":"[^"]*"'
+      | sed -E 's/.*"delete_api_path":"([^"]*)".*/\1/')
+    - |
+      if [ -n "$DELETE_URL" ]; then
+        echo "Suppression du package à l’URL : $DELETE_URL"
+        curl --request DELETE --header "JOB-TOKEN: $CI_JOB_TOKEN" "$DELETE_URL"
+      else
+        echo "Aucun package PyPI trouvé à supprimer."
+      fi
 
 build_package:
   stage: build
