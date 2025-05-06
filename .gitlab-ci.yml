@@ -49,12 +49,6 @@ Ruff Format -- Database:
   script:
     - ruff format ./database
 
-delete_old_package:
-  stage:
-    - .pre
-
-
-
 build_package:
   stage: build
   image: python:3.12  # Utilisation d'une image avec Python installé
