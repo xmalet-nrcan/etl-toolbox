@@ -6,7 +6,7 @@ stages:
 
 .base_python_image:
   image: python:3.12
-  script:
+  before_script:
     - pip install poetry pytest
 
 
