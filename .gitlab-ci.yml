@@ -54,7 +54,9 @@ Ruff Format -- Database:
 
 delete_pypi_package:
   stage: cleanup
-  image: curlimages/curl:latest  # image légère contenant curl
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache jq curl
 
   script:
     - echo "Recherche du package PyPI à supprimer..."
@@ -70,7 +72,7 @@ delete_pypi_package:
         echo "Aucun package PyPI trouvé à supprimer."
       fi
 
-build_package:
+Build and publish package:
   stage: build
   image: python:3.12  # Utilisation d'une image avec Python installé
 
