@@ -1,4 +1,4 @@
-from database.orm.base.base_table_mapping import (
+from nrcan_etl_toolbox.database.orm.base.base_table_mapping import (
     FONCTION_FILTER,
     LIMIT,
     OFFSET,

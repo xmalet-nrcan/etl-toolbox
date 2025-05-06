@@ -8,8 +8,8 @@ from sqlalchemy import create_engine, func
 from sqlalchemy.exc import DataError, IntegrityError
 from sqlalchemy.orm import InstrumentedAttribute, Session
 
-from database.orm import FONCTION_FILTER, LIMIT, ORDER_BY, Base
-from etl_logging import CustomLogger
+from nrcan_etl_toolbox.database.orm import FONCTION_FILTER, LIMIT, ORDER_BY, Base
+from nrcan_etl_toolbox.etl_logging import CustomLogger
 
 
 class AbstractDatabaseObjectsInterface:

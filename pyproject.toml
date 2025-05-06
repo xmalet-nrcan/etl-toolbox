@@ -1,5 +1,5 @@
 [project]
-name = "xm-etl-toolbox"
+name = "xm_nrcan_etl_toolbox"
 version = "0.1.0"
 description = "Package for logging and database interfacing using SQLAlchemy and SQLModels"
 authors = [
@@ -8,7 +8,7 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "sqlalchemy (>=2.0.40,<3.0.0)",
+    "SQLAlchemy (>=2.0.40,<3.0.0)",
     "sqlmodel (>=0.0.24,<0.0.25)",
     "pytest (>=8.0.0)", "shapely"
 ]
@@ -17,8 +17,7 @@ dependencies = [
 cache-dir = "./venv"
 
 [tool.poetry]
-packages = [{ include = "etl_logging" },
-    { include = "database" }
+packages = [{ include = "nrcan_etl_toolbox" }
 ]
 
 [tool.poetry.group.test.dependencies]

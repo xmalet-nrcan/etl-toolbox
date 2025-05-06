@@ -12,7 +12,7 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import ColumnProperty, InstrumentedAttribute, Query
 from sqlmodel import AutoString, SQLModel
 
-from etl_logging import CustomLogger
+from nrcan_etl_toolbox.etl_logging import CustomLogger
 
 FONCTION_FILTER = "funcs"
 ORDER_BY = "order_by"

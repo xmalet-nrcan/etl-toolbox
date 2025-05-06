@@ -5,7 +5,7 @@ import os
 import pathlib
 import shutil
 
-from etl_logging.etl_logger import CustomLogger
+from nrcan_etl_toolbox.etl_logging.etl_logger import CustomLogger
 
 
 def test_default_logger_initialization():
