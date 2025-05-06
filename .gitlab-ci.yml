@@ -61,8 +61,7 @@ delete_pypi_package:
     - >
       DELETE_URL=$(curl --silent --header "JOB-TOKEN: $CI_JOB_TOKEN"
       "https://gitlab.com/api/v4/projects/$CI_PROJECT_ID/packages"
-      | grep -o '"package_type":"pypi".*?"delete_api_path":"[^"]*"'
-      | sed -E 's/.*"delete_api_path":"([^"]*)".*/\1/')
+      | jq -r '.[] | select(.package_type == "pypi") | ._links.delete_api_path')
     - |
       if [ -n "$DELETE_URL" ]; then
         echo "Suppression du package à l’URL : $DELETE_URL"
