@@ -1,10 +1,13 @@
 stages:
-  - test
+  - lint
   - cleanup
+  - test
   - build
 
+
+
 .base_ruff_image:
-  stage: test
+  stage: lint
 
   rules:
     - if: "$CI_PIPELINE_SOURCE == 'merge_request_event'"
@@ -54,13 +57,33 @@ Ruff Format -- Database:
 
 delete_pypi_package:
   stage: cleanup
-  script:
-    - echo "Récupération de l'URL de suppression du package PyPI..."
-    - DELETE_URL=$(curl --silent --header "JOB-TOKEN: $CI_JOB_TOKEN" "https://gitlab.com/api/v4/projects/69578726/packages" | jq -r '.[] | select(.package_type == "pypi") | ._links.delete_api_path')
-    - echo "URL à supprimer: $DELETE_URL"
-    - if [ -n "$DELETE_URL" ]; then curl --request DELETE --header "JOB-TOKEN: $CI_JOB_TOKEN" "$DELETE_URL"; else echo "Aucun package PyPI à supprimer."; fi
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache jq curl
 
-build_package:
+  script:
+    - echo "Recherche du package PyPI à supprimer..."
+    - >
+      DELETE_URL=$(curl --silent --header "JOB-TOKEN: $CI_JOB_TOKEN"
+      "https://gitlab.com/api/v4/projects/$CI_PROJECT_ID/packages"
+      | jq -r '.[] | select(.package_type == "pypi") | ._links.delete_api_path')
+    - |
+      if [ -n "$DELETE_URL" ]; then
+        echo "Suppression du package à l’URL : $DELETE_URL"
+        curl --request DELETE --header "JOB-TOKEN: $CI_JOB_TOKEN" "$DELETE_URL"
+      else
+        echo "Aucun package PyPI trouvé à supprimer."
+      fi
+
+Test package:
+  stage: test
+  image: python:3.12
+  script:
+    - pip install poetry
+    - cd tests
+    - pytest -v
+
+Build and publish package:
   stage: build
   image: python:3.12  # Utilisation d'une image avec Python installé
 
