@@ -79,15 +79,27 @@ class CustomLogger(logging.Logger):
         except KeyError:
             logging_level = level
         super().__init__(name, level=logging_level)
-        self._logger_type = logger_type
+        self._logger_type = None
         self._verbose_logger_type: bool = None
         self.formatter: logging.Formatter = None
         self._file_path = None
 
         self._setup_logging_file_for_output(file_path, f"{name}_{logger_file_name}")
+        self.set_logger_type(logger_type)
 
+    def set_logger_type(self, logger_type: str):
+        """
+        Sets the type of logger for the current instance and configures the logger.
+
+        This method allows the user to update the logger type according to the
+        specified input and automatically configures the internal logger and its
+        handlers.
+
+        :param logger_type: Specifies the type of logger to set.
+        :type logger_type: str
+        """
+        self._logger_type = logger_type
         self._set_logger_from_type()
-
         self._set_logger_handlers()
 
     def _setup_logging_file_for_output(self, logging_file_path: str = None, file_name: str = None):
