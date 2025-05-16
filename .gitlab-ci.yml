@@ -7,7 +7,7 @@ stages:
 .base_python_image:
   image: python:3.12
   before_script:
-    - pip install poetry pytest
+    - pip install poetry pytest python-dotenv
 
 
 
