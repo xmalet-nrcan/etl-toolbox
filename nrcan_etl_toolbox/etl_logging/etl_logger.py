@@ -85,7 +85,6 @@ class CustomLogger(logging.Logger):
         self.formatter: logging.Formatter = None
         self._file_path = None
 
-
         self._setup_logging_file_for_output(file_path, f"{name}_{logger_file_name}")
         self.set_logger_type(logger_type)
 
@@ -112,7 +111,7 @@ class CustomLogger(logging.Logger):
             self.removeHandler(i)
         for i in self.filters:
             self.removeFilter(i)
-        with open(self._file_path, 'a') as f:
+        with open(self._file_path, "a") as f:
             f.write(f"{datetime.datetime.now()} :: ------------------ closing logger ------------------ \n")
 
     def _setup_logging_file_for_output(self, logging_file_path: str = None, file_name: str = None):
