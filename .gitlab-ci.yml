@@ -58,6 +58,20 @@ Ruff Format -- Database:
   script:
     - ruff format ./nrcan_etl_toolbox/database
 
+Ruff Check -- Data Reader:
+  extends: .base_ruff_image
+  script:
+    - ruff check ./nrcan_etl_toolbox/etl_toolbox/reader --fix --output-format=gitlab > code-quality-report_data_reader.json
+
+  artifacts:
+    reports:
+      codequality: $CI_PROJECT_DIR/code-quality-report_database.json
+
+Ruff Format -- Data Reader:
+  extends: .base_ruff_image
+  script:
+    - ruff format ./nrcan_etl_toolbox/etl_toolbox/reader
+
 
 
 delete_pypi_package:
