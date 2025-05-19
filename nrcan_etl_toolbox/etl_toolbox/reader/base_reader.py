@@ -1,11 +1,12 @@
 from abc import abstractmethod
+
 import pandas as pd
 
-class BaseDataReader(object):
 
-    def __init__(self, input_source ):
+class BaseDataReader:
+    def __init__(self, input_source):
         self._input_source = input_source
-        self._dataframe:pd.DataFrame = None
+        self._dataframe: pd.DataFrame = None
 
     @abstractmethod
     def _read_data(self, **kwargs):
@@ -21,4 +22,3 @@ class BaseDataReader(object):
     @property
     def columns(self) -> list:
         return self.dataframe.columns.tolist()
-

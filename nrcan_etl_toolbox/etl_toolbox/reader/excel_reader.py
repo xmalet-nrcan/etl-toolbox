@@ -11,11 +11,7 @@ class ExcelReader(BaseDataReader):
     See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_excel.html for more information
     """
 
-    def __init__(self, input_source
-                 , sheet_name=None
-                 , skiprows=0
-                 , skipfooter=0
-                 , **kwargs):
+    def __init__(self, input_source, sheet_name=None, skiprows=0, skipfooter=0, **kwargs):
         super().__init__(input_source)
 
         self.skipfooter = skipfooter
@@ -28,8 +24,9 @@ class ExcelReader(BaseDataReader):
     def get_sheet_names(self):
         return list(self._original_file.sheet_names)
 
-    def read_sheet(self, sheet_name, set_internal_dataframe: bool = False, skiprows=0, skipfooter=0,
-                   **kwargs) -> pd.DataFrame:
+    def read_sheet(
+        self, sheet_name, set_internal_dataframe: bool = False, skiprows=0, skipfooter=0, **kwargs
+    ) -> pd.DataFrame:
         """
         Reads a specified sheet from an Excel file and returns its contents as a pandas DataFrame.
         This method allows the user to optionally set the internal dataframe and also supports
@@ -64,16 +61,14 @@ class ExcelReader(BaseDataReader):
             return self._dataframe
         else:
             self._read_data(skiprows=skiprows, skipfooter=skipfooter, **kwargs)
-            return pd.read_excel(self._original_file, sheet_name=sheet_name, skiprows=skiprows,
-                                 skipfooter=skipfooter, **kwargs)
+            return pd.read_excel(
+                self._original_file, sheet_name=sheet_name, skiprows=skiprows, skipfooter=skipfooter, **kwargs
+            )
 
     def _read_data(self, sheet_name=None, skiprows=0, skipfooter=0, **kwargs):
-
-        self._dataframe = pd.read_excel(self._original_file
-                                        , sheet_name=sheet_name
-                                        , skiprows=skiprows
-                                        , skipfooter=skipfooter
-                                        , **kwargs)
+        self._dataframe = pd.read_excel(
+            self._original_file, sheet_name=sheet_name, skiprows=skiprows, skipfooter=skipfooter, **kwargs
+        )
 
     @property
     def columns(self) -> list:
@@ -83,15 +78,7 @@ class ExcelReader(BaseDataReader):
             case pd.DataFrame():
                 return list(self._dataframe.columns)
             case dict():
-                return [{i: list(self._dataframe[i].columns)} for i in self._dataframe.keys()]
+                return [{i: list(self._dataframe[i].columns)} for i in self._dataframe]
             case _:
                 return []
 
-
-# %%
-
-excel_reader = ExcelReader(r"C:\Users\xmalet\PycharmProjects\xm-etl-toolbox\tests\test_data\NFI_metadata.xlsx")
-# %%
-excel_reader.read_sheet("DepthToCode", set_internal_dataframe=True)
-print(excel_reader.dataframe)
-print(excel_reader.columns)

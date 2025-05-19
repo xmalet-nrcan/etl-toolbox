@@ -1,22 +1,20 @@
-from sqlalchemy.orm import Session
 import geopandas as gpd
 import pandas as pd
-from nrcan_etl_toolbox.etl_toolbox.reader.base_reader import BaseDataReader
 from sqlalchemy import Engine
+from sqlalchemy.orm import Session
+
+from nrcan_etl_toolbox.etl_toolbox.reader.base_reader import BaseDataReader
 
 
 class PostGisTableDataReader(BaseDataReader):
-    def __init__(self,input_source : Engine | Session
-                 ,  schema: str
-                 , table_name: str
-                 , geometry_column_name: str = None):
+    def __init__(self, input_source: Engine | Session, schema: str, table_name: str, geometry_column_name: str = None):
         self._table_name = table_name
         self._schema = schema
         self._geometry_column_name = geometry_column_name
         super().__init__(input_source=input_source)
 
     def _read_data(self):
-        query = "select * from {schema}.{table}".format(schema=self._schema, table=self._table_name)
+        query = f"select * from {self._schema}.{self._table_name}"
         match self._input_source:
             case Session():
                 with self._input_source.begin() as session:
@@ -28,8 +26,4 @@ class PostGisTableDataReader(BaseDataReader):
         if self._geometry_column_name is None:
             self._dataframe = pd.read_sql(query, con)
         else:
-            self._dataframe = gpd.read_postgis(query
-                                               , con=con
-                                               , geom_col=self._geometry_column_name
-                                               )
-
+            self._dataframe = gpd.read_postgis(query, con=con, geom_col=self._geometry_column_name)
