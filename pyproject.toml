@@ -31,8 +31,6 @@ cache-dir = "./venv"
 packages = [{ include = "nrcan_etl_toolbox" }
 ]
 
-[tool.poetry.group.test.dependencies]
-pytest = "8.3.5"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

@@ -4,24 +4,16 @@ pandas
 geopandas
 psycopg2-binary
 shapely
-scipy
-numpy
-
 python-dotenv
 tqdm
 sqlmodel
 
-
 timezonefinder
-
-tenacity
 
 pydantic
 requests
-dateparser
-
 ruff
 pytest
-
+poetry
 
 

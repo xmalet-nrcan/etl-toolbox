@@ -7,8 +7,8 @@ stages:
 .base_python_image:
   image: python:3.12
   before_script:
-    - pip install poetry pytest python-dotenv
-    - poetry config virtualenvs.create true
+    - cd $CI_PROJECT_DIR
+    - pip install -r requirements.txt
     - poetry install
 
 
