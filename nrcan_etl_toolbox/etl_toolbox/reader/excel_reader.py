@@ -21,11 +21,19 @@ class ExcelReader(BaseDataReader):
         self._original_file = pd.ExcelFile(self._input_source)
         self.sheet_name = sheet_name
 
+    def __del__(self):
+        self._original_file.close()
+        del self._dataframe
+
     def get_sheet_names(self):
         return list(self._original_file.sheet_names)
 
     def read_sheet(
-        self, sheet_name, set_internal_dataframe: bool = False, skiprows=0, skipfooter=0, **kwargs
+            self, sheet_name
+            , set_internal_dataframe: bool = False
+            , skiprows=0
+            , skipfooter=0
+            , **kwargs
     ) -> pd.DataFrame:
         """
         Reads a specified sheet from an Excel file and returns its contents as a pandas DataFrame.
@@ -60,10 +68,27 @@ class ExcelReader(BaseDataReader):
             self._read_data(sheet_name=sheet_name, skiprows=skiprows, skipfooter=skipfooter, **kwargs)
             return self._dataframe
         else:
-            self._read_data(skiprows=skiprows, skipfooter=skipfooter, **kwargs)
             return pd.read_excel(
                 self._original_file, sheet_name=sheet_name, skiprows=skiprows, skipfooter=skipfooter, **kwargs
             )
+
+    def reset_internal_dataframe(self, with_sheet_name:bool=False):
+        """
+        Resets the internal dataframe by re-reading data from the source. Can optionally
+        include the sheet name during the data read operation based on the provided
+        flag. The function utilizes the parameters `skiprows` and `skipfooter` that are
+        predefined within the class.
+
+        :param with_sheet_name: A boolean flag. If True, includes the sheet name during
+            the data read operation. If False, sheet name is ignored.
+        :type with_sheet_name: bool
+        :return: None
+        """
+        assert with_sheet_name in [True, False], "with_sheet_name must be True or False"
+        if with_sheet_name:
+            self._read_data( skiprows=self.skiprows, skipfooter=self.skipfooter, sheet_name=self.sheet_name)
+        else:
+            self._read_data(skiprows=self.skiprows, skipfooter=self.skipfooter)
 
     def _read_data(self, sheet_name=None, skiprows=0, skipfooter=0, **kwargs):
         self._dataframe = pd.read_excel(
@@ -81,4 +106,3 @@ class ExcelReader(BaseDataReader):
                 return [{i: list(self._dataframe[i].columns)} for i in self._dataframe]
             case _:
                 return []
-
