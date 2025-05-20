@@ -111,8 +111,11 @@ class CustomLogger(logging.Logger):
             self.removeHandler(i)
         for i in self.filters:
             self.removeFilter(i)
-        with open(self._file_path, "a") as f:
-            f.write(f"{datetime.datetime.now()} :: ------------------ closing logger ------------------ \n")
+        try:
+            with open(self._file_path, "a") as f:
+                f.write(f"{datetime.datetime.now()} :: ------------------ closing logger ------------------ \n")
+        except FileNotFoundError:
+            pass
 
     def _setup_logging_file_for_output(self, logging_file_path: str = None, file_name: str = None):
         """
