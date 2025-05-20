@@ -8,6 +8,8 @@ stages:
   image: python:3.12
   before_script:
     - pip install poetry pytest python-dotenv
+    - poetry config virtualenvs.create true
+    - poetry install
 
 
 
@@ -98,7 +100,6 @@ Test package:
   extends: .base_python_image
   stage: test
   script:
-    - poetry install
     - python -m pytest -v tests/
 
 Build and publish package:
