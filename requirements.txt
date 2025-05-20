@@ -15,5 +15,6 @@ requests
 ruff
 pytest
 poetry
+openpyxl
 
 

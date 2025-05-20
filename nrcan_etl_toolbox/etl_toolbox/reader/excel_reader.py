@@ -18,7 +18,7 @@ class ExcelReader(BaseDataReader):
         self.skiprows = skiprows
         self.sheet_name = sheet_name
         self._kwargs = kwargs
-        self._original_file = pd.ExcelFile(self._input_source)
+        self._original_file = pd.ExcelFile(self._input_source, engine="openpyxl")
         self.sheet_name = sheet_name
 
     def __del__(self):
