@@ -9,7 +9,7 @@ tqdm
 sqlmodel
 
 timezonefinder
-
+fiona
 pydantic
 requests
 ruff
