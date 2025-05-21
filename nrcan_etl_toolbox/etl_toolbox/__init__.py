@@ -1,13 +1,12 @@
 from nrcan_etl_toolbox.etl_toolbox.reader import (
     BaseDataReader,
     CSVReader,
+    ExcelReader,
     GeoPackageDataReader,
     JSONReader,
-    ShapefileReader,
-    ExcelReader,
     PostGisTableDataReader,
+    ShapefileReader,
 )
-
 from nrcan_etl_toolbox.etl_toolbox.reader_factory import ReaderFactory
 
 __all__ = [

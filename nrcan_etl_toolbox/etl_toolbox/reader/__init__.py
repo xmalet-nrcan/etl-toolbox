@@ -6,7 +6,6 @@ from nrcan_etl_toolbox.etl_toolbox.reader.json_reader import JSONReader
 from nrcan_etl_toolbox.etl_toolbox.reader.postgis_reader import PostGisTableDataReader
 from nrcan_etl_toolbox.etl_toolbox.reader.shapefile_reader import ShapefileReader
 
-
 __all__ = [
     "BaseDataReader",
     "CSVReader",
