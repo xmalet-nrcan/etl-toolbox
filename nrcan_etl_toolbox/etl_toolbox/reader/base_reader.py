@@ -4,7 +4,7 @@ import pandas as pd
 
 
 class BaseDataReader:
-    def __init__(self, input_source):
+    def __init__(self, input_source, **kwargs):
         self._input_source = input_source
         self._dataframe: pd.DataFrame = None
 
