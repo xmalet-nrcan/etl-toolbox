@@ -29,11 +29,7 @@ class ExcelReader(BaseDataReader):
         return list(self._original_file.sheet_names)
 
     def read_sheet(
-            self, sheet_name
-            , set_internal_dataframe: bool = False
-            , skiprows=0
-            , skipfooter=0
-            , **kwargs
+        self, sheet_name, set_internal_dataframe: bool = False, skiprows=0, skipfooter=0, **kwargs
     ) -> pd.DataFrame:
         """
         Reads a specified sheet from an Excel file and returns its contents as a pandas DataFrame.
@@ -72,7 +68,7 @@ class ExcelReader(BaseDataReader):
                 self._original_file, sheet_name=sheet_name, skiprows=skiprows, skipfooter=skipfooter, **kwargs
             )
 
-    def reset_internal_dataframe(self, with_sheet_name:bool=False):
+    def reset_internal_dataframe(self, with_sheet_name: bool = False):
         """
         Resets the internal dataframe by re-reading data from the source. Can optionally
         include the sheet name during the data read operation based on the provided
@@ -86,7 +82,7 @@ class ExcelReader(BaseDataReader):
         """
         assert with_sheet_name in [True, False], "with_sheet_name must be True or False"
         if with_sheet_name:
-            self._read_data( skiprows=self.skiprows, skipfooter=self.skipfooter, sheet_name=self.sheet_name)
+            self._read_data(skiprows=self.skiprows, skipfooter=self.skipfooter, sheet_name=self.sheet_name)
         else:
             self._read_data(skiprows=self.skiprows, skipfooter=self.skipfooter)
 
