@@ -34,27 +34,26 @@ SHEET_DATA_2 = {
 
 
 def _create_temp_excel_file(data, sheet_names):
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-    try:
-        with pd.ExcelWriter(temp_file) as writer:
-            for sheet_name, sheet_data in zip(sheet_names, data):
-                pd.DataFrame(sheet_data).to_excel(writer, index=False, sheet_name=sheet_name)
-        temp_file.close()
-
-    finally:
-        return temp_file.name
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_file:
+        try:
+            with pd.ExcelWriter(temp_file) as writer:
+                for sheet_name, sheet_data in zip(sheet_names, data, strict=False):
+                    pd.DataFrame(sheet_data).to_excel(writer, index=False, sheet_name=sheet_name)
+        except Exception as e:
+            raise e
+    return temp_file.name
 
 
 def _create_temp_excel_file_two_sheets_different_data():
-    temp_file = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False)
-    try:
-        # Write data to the Excel file
-        with pd.ExcelWriter(temp_file.name) as writer:
-            pd.DataFrame(SHEET_DATA_1).to_excel(writer, sheet_name=SHEET_1_NAME, index=False)
-            pd.DataFrame(SHEET_DATA_2).to_excel(writer, sheet_name=SHEET_2_NAME, index=False)
-        temp_file.close()
-    finally:
-        return temp_file.name
+    with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as temp_file:
+        try:
+            # Write data to the Excel file
+            with pd.ExcelWriter(temp_file.name) as writer:
+                pd.DataFrame(SHEET_DATA_1).to_excel(writer, sheet_name=SHEET_1_NAME, index=False)
+                pd.DataFrame(SHEET_DATA_2).to_excel(writer, sheet_name=SHEET_2_NAME, index=False)
+        except Exception as e:
+            raise e
+    return temp_file.name
 
 
 def test_excel_reader_initialization():
@@ -146,7 +145,7 @@ def test_excel_reader_read_sheet_change_internal_true():
         assert all_sheets_df[SHEET_1_NAME].equals(df_sheet1), (
             "Sheet1 DataFrame should be the same as the one returned by read_sheet."
         )
-        assert type(all_sheets_df) != type(df_sheet1), (
+        assert type(all_sheets_df) is not type(df_sheet1), (
             "Internal dataframe should be different from the one returned by read_sheet."
         )
         # Verify the actual content of Sheet1
@@ -196,12 +195,11 @@ def test_excel_reader_read_sheet_change_internal_true():
             "Sheet names should not be updated when read_sheet is called with set_internal_dataframe=True."
         )
 
-
-
     finally:
         del reader
         # Remove the temporary file after the test
         os.unlink(temp_file)
+
 
 def test_excel_reader_reset_internal_dataframe():
     temp_file = _create_temp_excel_file_two_sheets_different_data()
@@ -218,11 +216,15 @@ def test_excel_reader_reset_internal_dataframe():
         assert isinstance(df_sheet1, pd.DataFrame), "Sheet1 data should be returned as a DataFrame."
 
         reader.reset_internal_dataframe(with_sheet_name=False)
-        assert isinstance(reader.dataframe, dict), "Internal dataframe should be a dictionary when resetting with parameter with_sheet_name=False."
+        assert isinstance(reader.dataframe, dict), (
+            "Internal dataframe should be a dictionary when resetting with parameter with_sheet_name=False."
+        )
 
         reader.sheet_name = SHEET_2_NAME
         reader.reset_internal_dataframe(with_sheet_name=True)
-        assert isinstance(reader.dataframe, pd.DataFrame), "Internal dataframe should be a DataFrame when resetting with parameter with_sheet_name=True."
+        assert isinstance(reader.dataframe, pd.DataFrame), (
+            "Internal dataframe should be a DataFrame when resetting with parameter with_sheet_name=True."
+        )
         assert reader.dataframe.equals(pd.DataFrame(SHEET_DATA_2)), (
             "Internal dataframe should be updated when reset_internal_dataframe is called with with_sheet_name=True."
         )

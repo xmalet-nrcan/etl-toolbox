@@ -1,13 +1,12 @@
-from abc import ABC, abstractmethod
-
 import pandas as pd
 import pytest
+
 from nrcan_etl_toolbox.etl_toolbox.reader.base_reader import BaseDataReader
 
 
 def test_cannot_instantiate_base_reader():
     with pytest.raises(AttributeError):
-        BaseDataReader(input_source="test").columns
+        BaseDataReader(input_source="test").columns  # noqa: B018
 
 
 def test_base_reader_default_input_source():
