@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+
+import sqlalchemy.schema
 import unicodedata
 from collections.abc import Callable
 from typing import Any
@@ -144,52 +146,59 @@ class Base(SQLModel):
         session,
         condition="or",
         **filters,
-    ) -> Query:
+    ) -> Query | None:
         query = session.query(cls)
         sub_filters = []
-
-        # Collect conditions dynamically
-        for attr, value in filters.items():
-            if value is not None and hasattr(cls, attr):
-                # Add equality and "LIKE" conditions
-                column_attr = getattr(cls, attr)
-                if isinstance(column_attr, (InstrumentedAttribute, ColumnProperty)):
-                    if isinstance(value, list):
-                        for v in value:
-                            cls.add_value_to_sub_query(column_attr, sub_filters, v)
-                    if isinstance(value, BaseGeometry):
-                        pass
-                    else:
-                        cls.add_value_to_sub_query(column_attr, sub_filters, value)
-
-        if FONCTION_FILTER in filters:
-            sub_filters.extend(filters[FONCTION_FILTER])
-
-        # Apply OR logic if there are conditions
-        if sub_filters:
-            if condition == "or":
-                query = query.filter(or_(*sub_filters))
-            if condition == "and":
-                query = query.filter(*sub_filters)
-
-        if query.whereclause is None and condition != "all":
-            return
-        else:
-            if ORDER_BY in filters:
-                query = query.order_by(filters[ORDER_BY])
-            if LIMIT in filters and isinstance(filters[LIMIT], int):
-                query = query.limit(filters[LIMIT])
-            if OFFSET in filters and isinstance(filters[OFFSET], int):
-                query = query.offset(filters[OFFSET])
-            try:
-                compiled_query = query.statement.compile(
-                    dialect=postgresql.dialect(),
-                    compile_kwargs={"literal_binds": True},
-                )
-            except Exception:
-                compiled_query = query.statement.compile(dialect=postgresql.dialect())
-            logger.debug(f"{compiled_query}")
+        if condition not in ["or", "and", "all"]:
+            raise ValueError("condition must be 'or', 'and' or 'all'")
+        if condition == "all":
             return query
+        else:
+            # Collect conditions dynamically
+            for attr, value in filters.items():
+                if value is not None and hasattr(cls, attr):
+                    # Add equality and "LIKE" conditions
+                    column_attr = getattr(cls, attr)
+
+                    if isinstance(column_attr, (InstrumentedAttribute, ColumnProperty)):
+                        match value:
+                            case list():
+                                for v in value:
+                                    cls.add_value_to_sub_query(column_attr, sub_filters, v)
+                            case BaseGeometry():
+                                pass
+                            case _:
+                                cls.add_value_to_sub_query(column_attr, sub_filters, value)
+
+            if FONCTION_FILTER in filters:
+                sub_filters.extend(filters[FONCTION_FILTER])
+
+            # Apply OR logic if there are conditions
+            if sub_filters:
+                if condition == "or":
+                    query = query.filter(or_(*sub_filters))
+                if condition == "and":
+                    query = query.filter(*sub_filters)
+
+            if query.whereclause is None:
+                raise ValueError("No conditions provided with parameter 'condition' = 'or' or 'and'")
+            else:
+                # add `order by`, `limit` and `offset` to query if provided in filters
+                if ORDER_BY in filters:
+                    query = query.order_by(filters[ORDER_BY])
+                if LIMIT in filters and isinstance(filters[LIMIT], int):
+                    query = query.limit(filters[LIMIT])
+                if OFFSET in filters and isinstance(filters[OFFSET], int):
+                    query = query.offset(filters[OFFSET])
+                try:
+                    compiled_query = query.statement.compile(
+                        dialect=postgresql.dialect(),
+                        compile_kwargs={"literal_binds": True},
+                    )
+                except Exception:
+                    compiled_query = query.statement.compile(dialect=postgresql.dialect())
+                logger.debug(f"{compiled_query}")
+                return query
 
     @classmethod
     def query_object(
@@ -230,15 +239,8 @@ class Base(SQLModel):
         """
         if isinstance(input_string, list):
             input_string = "".join(input_string)
-        normalized_string = unicodedata.normalize("NFKD", input_string)
-        prepared_string = ""
 
-        for char in normalized_string:
-            if unicodedata.combining(char):  # If the character is a combining mark (e.g., accent)
-                prepared_string = prepared_string[:-1] + "_"
-            else:
-                prepared_string += char
-        return unicodedata.normalize("NFC", prepared_string)
+        return ''.join('_' if ord(c) > 127 else c for c in input_string)
 
     @classmethod
     def _formatted_parameter(cls, parameter: str) -> str:
@@ -249,14 +251,79 @@ class Base(SQLModel):
         return f"%{parameter_norm.lower()}%"
 
     @classmethod
-    def _is_like(self, col: InstrumentedAttribute, parameter: str = None):
-        if parameter == "%":
-            return
-        if parameter is not None:
-            return func.lower(col).like(self._formatted_parameter(parameter))
+    def _is_like(cls, col: InstrumentedAttribute, parameter: str = None):
+        match parameter:
+            case "%":
+                return None
+            case str():
+                return func.lower(col).like(cls._formatted_parameter(parameter))
+            case _:
+                return None
 
     @classmethod
-    def get_default_value_from_column(cls, column_name):
+    def get_default_value_from_column(cls, column_name) -> Any | None:
+        """
+        Returns the default value for a given SQLAlchemy column (Python-side or server-side).
+
+        Args:
+            column_name (str): The name of the column.
+
+        Returns:
+            Any or None: The default value, or None if no default is defined.
+        """
+        if not hasattr(cls, column_name):
+            return None
+
+        column = getattr(cls, column_name)
+
+        # Vérifie si l'attribut est une colonne SQLAlchemy
+        if not hasattr(column, "default") or not hasattr(column, "server_default"):
+            return None
+
+        match column.default, column.server_default:
+            case (default, _) if default is not None:
+                return cls._get_arg_default(default.arg)
+
+            case (_, server_default) if server_default is not None:
+                return str(cls._get_arg_default(server_default.arg))
+
+            case _:
+                return None
+
+    @staticmethod
+    def _get_arg_default(arg):
+
+        match arg:
+            case str():
+                return arg
+            case sqlalchemy.schema.Column():
+                return Base._get_arg_default(arg.default.arg)
+            case _ if callable(arg):
+                try:
+                    return arg()
+                except TypeError:
+                    try:
+                        return arg(None)
+                    except Exception:
+                        return None
+            case _:
+                return arg
+
+    @classmethod
+    def get_default_values_for_columns(cls, column_names: list[str]) -> dict:
+        """
+        Returns the default values (Python-side or server-side) for a list of SQLAlchemy column names.
+
+        Args:
+            column_names (list[str]): Names of the columns.
+
+        Returns:
+            dict: A dictionary {column_name: default_value_or_None}.
+        """
+        return {name: cls.get_default_value_from_column(name) for name in column_names}
+
+    @classmethod
+    def get_default_value_from_column_old(cls, column_name):
         """
         Extracts the default value (Python-side or server-side) for a specified column in an SQLAlchemy model.
 
