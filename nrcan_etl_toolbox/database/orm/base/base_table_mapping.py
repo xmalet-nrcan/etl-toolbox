@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-
-import sqlalchemy.schema
-import unicodedata
 from collections.abc import Callable
 from typing import Any
 
+import sqlalchemy.schema
 from geoalchemy2 import WKBElement
 from shapely.geometry.base import BaseGeometry
 from sqlalchemy import String, Text, func, or_, orm
