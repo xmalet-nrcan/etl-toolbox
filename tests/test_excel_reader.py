@@ -6,7 +6,7 @@ import tempfile
 import pandas as pd
 import pytest
 
-from nrcan_etl_toolbox.etl_toolbox.reader.excel_reader import ExcelReader
+from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.excel_reader import ExcelReader
 
 SHEET_1_NAME = "Sheet1"
 SHEET_2_NAME = "Sheet2"

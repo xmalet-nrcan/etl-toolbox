@@ -3,13 +3,13 @@ import os
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
-from nrcan_etl_toolbox.etl_toolbox.reader.base_reader import BaseDataReader
-from nrcan_etl_toolbox.etl_toolbox.reader.csv_reader import CSVReader
-from nrcan_etl_toolbox.etl_toolbox.reader.excel_reader import ExcelReader
-from nrcan_etl_toolbox.etl_toolbox.reader.geopackage_reader import GeoPackageDataReader
-from nrcan_etl_toolbox.etl_toolbox.reader.json_reader import JSONReader
-from nrcan_etl_toolbox.etl_toolbox.reader.postgis_reader import PostGisTableDataReader
-from nrcan_etl_toolbox.etl_toolbox.reader.shapefile_reader import ShapefileReader
+from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.base_reader import BaseDataReader
+from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.csv_reader import CSVReader
+from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.excel_reader import ExcelReader
+from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.geopackage_reader import GeoPackageDataReader
+from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.json_reader import JSONReader
+from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.postgis_reader import PostGisTableDataReader
+from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.shapefile_reader import ShapefileReader
 
 
 class ReaderFactory:

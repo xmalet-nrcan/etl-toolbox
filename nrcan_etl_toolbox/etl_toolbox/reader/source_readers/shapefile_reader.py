@@ -1,6 +1,6 @@
 import geopandas as gpd
 
-from nrcan_etl_toolbox.etl_toolbox.reader.base_reader import BaseDataReader
+from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.base_reader import BaseDataReader
 
 
 class ShapefileReader(BaseDataReader):

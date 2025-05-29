@@ -3,7 +3,7 @@ import pandas as pd
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
-from nrcan_etl_toolbox.etl_toolbox.reader.base_reader import BaseDataReader
+from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.base_reader import BaseDataReader
 
 
 class PostGisTableDataReader(BaseDataReader):
