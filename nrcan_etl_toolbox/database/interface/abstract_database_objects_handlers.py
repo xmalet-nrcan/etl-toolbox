@@ -1,7 +1,7 @@
 import re
 import unicodedata
 from collections import defaultdict
-from typing import TypeVar, Type, Optional, List
+from typing import TypeVar
 
 import sqlalchemy.engine
 from psycopg2.errors import UniqueViolation
@@ -12,7 +12,7 @@ from sqlalchemy.orm import InstrumentedAttribute, Session
 from nrcan_etl_toolbox.database.orm import FONCTION_FILTER, LIMIT, ORDER_BY, Base
 from nrcan_etl_toolbox.etl_logging import CustomLogger
 
-T = TypeVar('T', bound='Base')
+T = TypeVar("T", bound="Base")
 
 
 class AbstractDatabaseObjectsInterface:
@@ -155,7 +155,7 @@ class AbstractDatabaseObjectsInterface:
         if parameter is not None:
             return func.lower(col).like(self._formatted_parameter(parameter))
 
-    def _get_element_in_database(self, table_model: Type[T], condition="or", **kwargs) -> list[T] | None:
+    def _get_element_in_database(self, table_model: type[T], condition="or", **kwargs) -> list[T] | None:
         with Session(AbstractDatabaseObjectsInterface.engine) as session:
             try:
                 data = table_model.query_object(session=session, condition=condition, **kwargs)
@@ -170,7 +170,7 @@ class AbstractDatabaseObjectsInterface:
             return data
 
     def _get_or_create_element(
-        self, dict_element: str, table_model: Type[T], condition="and", **kwargs
+        self, dict_element: str, table_model: type[T], condition="and", **kwargs
     ) -> list[T] | None:
         with Session(AbstractDatabaseObjectsInterface.engine) as session:
             try:
