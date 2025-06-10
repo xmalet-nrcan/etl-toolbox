@@ -1,6 +1,7 @@
 import re
 import unicodedata
 from collections import defaultdict
+from typing import TypeVar, Type, Optional, List
 
 import sqlalchemy.engine
 from psycopg2.errors import UniqueViolation
@@ -10,6 +11,8 @@ from sqlalchemy.orm import InstrumentedAttribute, Session
 
 from nrcan_etl_toolbox.database.orm import FONCTION_FILTER, LIMIT, ORDER_BY, Base
 from nrcan_etl_toolbox.etl_logging import CustomLogger
+
+T = TypeVar('T', bound='Base')
 
 
 class AbstractDatabaseObjectsInterface:
@@ -152,7 +155,7 @@ class AbstractDatabaseObjectsInterface:
         if parameter is not None:
             return func.lower(col).like(self._formatted_parameter(parameter))
 
-    def _get_element_in_database(self, table_model: type[Base], condition="or", **kwargs):
+    def _get_element_in_database(self, table_model: Type[T], condition="or", **kwargs) -> list[T] | None:
         with Session(AbstractDatabaseObjectsInterface.engine) as session:
             try:
                 data = table_model.query_object(session=session, condition=condition, **kwargs)
@@ -167,8 +170,8 @@ class AbstractDatabaseObjectsInterface:
             return data
 
     def _get_or_create_element(
-        self, dict_element: str, table_model: type[Base], condition="and", **kwargs
-    ) -> list[Base] | None:
+        self, dict_element: str, table_model: Type[T], condition="and", **kwargs
+    ) -> list[T] | None:
         with Session(AbstractDatabaseObjectsInterface.engine) as session:
             try:
                 data = self._get_element_in_database(table_model=table_model, condition=condition, **kwargs)
@@ -192,7 +195,7 @@ class AbstractDatabaseObjectsInterface:
                 else:
                     return data
 
-    def _get_element_to_be_inserted(self, dict_element: str, table_model: type[Base], **kwargs):
+    def _get_element_to_be_inserted(self, dict_element: str, table_model: type[T], **kwargs) -> list[T] | None:
         to_return = []
         in_dict_elements = {k: v for k, v in kwargs.items() if v is not None and not table_model.is_identity_column(k)}
         for elt in self._database_objects[dict_element]:
@@ -206,7 +209,7 @@ class AbstractDatabaseObjectsInterface:
                     to_return.append(elt)
         return to_return
 
-    def _create_element(self, dict_element: str, table_model: type[Base], **kwargs):
+    def _create_element(self, dict_element: str, table_model: type[T], **kwargs) -> T | None:
         t = table_model()
         for k, v in kwargs.items():
             if not t.is_identity_column(k):
