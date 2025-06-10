@@ -104,18 +104,20 @@ class CustomLogger(logging.Logger):
         self._set_logger_handlers()
 
     def close(self):
-        self.__del__()
-
-    def __del__(self):
-        for i in self.handlers:
-            self.removeHandler(i)
-        for i in self.filters:
-            self.removeFilter(i)
         try:
             with open(self._file_path, "a") as f:
                 f.write(f"{datetime.datetime.now()} :: ------------------ closing logger ------------------ \n")
         except FileNotFoundError:
             pass
+        self.__del__()
+
+    def __del__(self):
+
+        for i in self.handlers:
+            self.removeHandler(i)
+        for i in self.filters:
+            self.removeFilter(i)
+
 
     def _setup_logging_file_for_output(self, logging_file_path: str = None, file_name: str = None):
         """
