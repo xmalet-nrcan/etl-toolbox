@@ -112,12 +112,10 @@ class CustomLogger(logging.Logger):
         self.__del__()
 
     def __del__(self):
-
         for i in self.handlers:
             self.removeHandler(i)
         for i in self.filters:
             self.removeFilter(i)
-
 
     def _setup_logging_file_for_output(self, logging_file_path: str = None, file_name: str = None):
         """
