@@ -220,9 +220,12 @@ class Base(SQLModel):
 
     @classmethod
     def add_value_to_sub_query(cls, column_attr, sub_filters, value):
-        sub_filters.append(column_attr == value)
-        if isinstance(column_attr.property.columns[0].type, (String, Text, AutoString)):
-            sub_filters.append(cls._is_like(column_attr, value))
+        if isinstance(column_attr.property, sqlalchemy.orm.RelationshipProperty):
+            sub_filters.append(value == column_attr)
+        else:
+            sub_filters.append(column_attr == value)
+            if isinstance(column_attr.property.columns[0].type, (String, Text, AutoString)):
+                sub_filters.append(cls._is_like(column_attr, value))
 
     @staticmethod
     def remove_accents_characters_from_string(input_string: str) -> str:
@@ -238,7 +241,7 @@ class Base(SQLModel):
         if isinstance(input_string, list):
             input_string = "".join(input_string)
 
-        return ''.join('_' if ord(c) > 127 else c for c in input_string)
+        return "".join("_" if ord(c) > 127 else c for c in input_string)
 
     @classmethod
     def _formatted_parameter(cls, parameter: str) -> str:
@@ -290,7 +293,6 @@ class Base(SQLModel):
 
     @staticmethod
     def _get_arg_default(arg):
-
         match arg:
             case str():
                 return arg
