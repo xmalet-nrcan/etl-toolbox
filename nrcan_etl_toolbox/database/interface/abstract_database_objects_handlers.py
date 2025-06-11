@@ -5,7 +5,7 @@ from typing import TypeVar
 
 import sqlalchemy.engine
 from psycopg2.errors import UniqueViolation
-from sqlalchemy import create_engine, func
+from sqlalchemy import BinaryExpression, create_engine, func
 from sqlalchemy.exc import DataError, IntegrityError
 from sqlalchemy.orm import InstrumentedAttribute, Session
 
@@ -17,7 +17,7 @@ T = TypeVar("T", bound="Base")
 
 class AbstractDatabaseObjectsInterface:
     engine: sqlalchemy.engine.Engine = None
-    # session: sqlalchemy.orm.session.Session = None
+    session: sqlalchemy.orm.session.Session = None
     logger = CustomLogger("database_objects_handler", logger_type="default")
 
     def __init__(self, database_url: str, db_objects_to_treat: list = None, logger_level="DEBUG"):
@@ -27,7 +27,7 @@ class AbstractDatabaseObjectsInterface:
 
         self._database_objects_to_treat = db_objects_to_treat
         # Ensure the database connection is initialized only once
-        if AbstractDatabaseObjectsInterface.engine is None:  # or AbstractDatabaseObjectsInterface.session is None:
+        if AbstractDatabaseObjectsInterface.engine is None:  #
             self._connect_to_database(database_url)
         self.logger.debug(
             f"Connected to server {self.engine.url.host} "
@@ -48,26 +48,27 @@ class AbstractDatabaseObjectsInterface:
     def _connect_to_database(self, database_url):
         """Connect to the database."""
         AbstractDatabaseObjectsInterface.engine = create_engine(database_url)
-        # Session = sessionmaker(bind=AbstractDatabaseObjectsInterface.engine)
-        # AbstractDatabaseObjectsInterface.session = Session()
+        AbstractDatabaseObjectsInterface.session = Session(
+            bind=AbstractDatabaseObjectsInterface.engine, expire_on_commit=False
+        )
         Base.metadata.create_all(AbstractDatabaseObjectsInterface.engine)
         self.logger.info("Connected to database")
 
-    def _insert_object(self, db_object: Base):
-        with Session(AbstractDatabaseObjectsInterface.engine) as session:
+    def _insert_object(self, db_object: Base) -> bool | None:
+        with self.session.begin():
             try:
                 # Ajout d'un seul objet à la session
                 self.logger.debug(db_object)
-                session.add(db_object)
-                session.commit()
+                self.session.add(db_object)
+                self.session.commit()
                 return True
             except UniqueViolation as v:
-                session.rollback()
+                self.session.rollback()
                 self.logger.error(f"UniqueViolation - {db_object} \n{v}", stacklevel=3)
                 raise v
 
             except IntegrityError as e:
-                session.rollback()
+                self.session.rollback()
                 if isinstance(e.orig, UniqueViolation):
                     if isinstance(e.orig, UniqueViolation):
                         constraint_match = re.search(r"unique « (.*?) »", str(e.args))
@@ -75,15 +76,18 @@ class AbstractDatabaseObjectsInterface:
                         if "uni_" in contraint_name or "pk_" in contraint_name:
                             return True
                         else:
+                            self.logger.error(f"IntegrityError - {db_object} \n{e}", stacklevel=3)
                             raise e
+                    return None
                 else:
                     # Annule les modifications en cas d'erreur d'intégrité
-                    session.rollback()
+                    self.session.rollback()
                     self.logger.error(f"IntegrityError - {db_object} \n{e}", stacklevel=3)
+                    return None
 
             except Exception as e:
                 # Annule les modifications pour toute autre erreur
-                session.rollback()
+                self.session.rollback()
                 raise e from e
 
     def insert_object(self, db_object: Base):
@@ -151,20 +155,21 @@ class AbstractDatabaseObjectsInterface:
 
         return f"%{parameter_norm.lower()}%"
 
-    def _is_like(self, col: InstrumentedAttribute, parameter: str = None):
+    def _is_like(self, col: InstrumentedAttribute, parameter: str = None) -> BinaryExpression | None:
         if parameter is not None:
             return func.lower(col).like(self._formatted_parameter(parameter))
+        return None
 
     def _get_element_in_database(self, table_model: type[T], condition="or", **kwargs) -> list[T] | None:
-        with Session(AbstractDatabaseObjectsInterface.engine) as session:
+        with self.session.begin():
             try:
-                data = table_model.query_object(session=session, condition=condition, **kwargs)
+                data = table_model.query_object(session=self.session, condition=condition, **kwargs)
             except DataError:
-                session.rollback()
+                self.session.rollback()
 
                 return None
             except Exception:
-                session.rollback()
+                self.session.rollback()
                 return None
 
             return data
@@ -172,7 +177,7 @@ class AbstractDatabaseObjectsInterface:
     def _get_or_create_element(
         self, dict_element: str, table_model: type[T], condition="and", **kwargs
     ) -> list[T] | None:
-        with Session(AbstractDatabaseObjectsInterface.engine) as session:
+        with self.session.begin():
             try:
                 data = self._get_element_in_database(table_model=table_model, condition=condition, **kwargs)
                 if data is not None and len(data) == 0:
@@ -180,7 +185,7 @@ class AbstractDatabaseObjectsInterface:
                         dict_element=dict_element, table_model=table_model, **kwargs
                     )
             except Exception as e:
-                session.rollback()
+                self.session.rollback()
                 self.logger.warning(
                     f"ON _get_or_create_element with \n{table_model}, {condition}, {kwargs} \nRAISED {e}", stacklevel=3
                 )
