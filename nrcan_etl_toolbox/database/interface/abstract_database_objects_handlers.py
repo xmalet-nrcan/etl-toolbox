@@ -55,7 +55,7 @@ class AbstractDatabaseObjectsInterface:
         self.logger.info("Connected to database")
 
     def _insert_object(self, db_object: Base) -> bool | None:
-        with self.session.begin():
+        with self.session.begin(nested=True):
             try:
                 # Ajout d'un seul objet à la session
                 self.logger.debug(db_object)
@@ -161,7 +161,7 @@ class AbstractDatabaseObjectsInterface:
         return None
 
     def _get_element_in_database(self, table_model: type[T], condition="or", **kwargs) -> list[T] | None:
-        with self.session.begin():
+        with self.session.begin(nested=True):
             try:
                 data = table_model.query_object(session=self.session, condition=condition, **kwargs)
             except DataError:
@@ -177,7 +177,7 @@ class AbstractDatabaseObjectsInterface:
     def _get_or_create_element(
         self, dict_element: str, table_model: type[T], condition="and", **kwargs
     ) -> list[T] | None:
-        with self.session.begin():
+        with self.session.begin(nested=True):
             try:
                 data = self._get_element_in_database(table_model=table_model, condition=condition, **kwargs)
                 if data is not None and len(data) == 0:
