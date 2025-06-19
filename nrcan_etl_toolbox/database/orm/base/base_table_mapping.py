@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, TypeVar, Type
 
 import sqlalchemy.schema
 from geoalchemy2 import WKBElement
@@ -20,6 +20,8 @@ LIMIT = "limit"
 OFFSET = "offset"
 
 logger = CustomLogger("SQLModels")
+
+T = TypeVar('T', bound='Base')
 
 
 class Base(SQLModel):
@@ -135,7 +137,7 @@ class Base(SQLModel):
         return False
 
     @classmethod
-    def query_all_rows(cls, session):
+    def query_all_rows(cls:Type[T], session)->list[T] | None:
         return cls.query_object(session=session, condition="all")
 
     @classmethod
@@ -200,12 +202,12 @@ class Base(SQLModel):
 
     @classmethod
     def query_object(
-        cls,
+        cls: Type[T],
         session,
         condition="or",
         funcs_conditions="and",
         **filters,
-    ):
+    ) -> list[T] | None:
         try:
             return cls.get_query_for_object(
                 session=session, condition=condition, funcs_conditions=funcs_conditions, **filters
@@ -214,9 +216,7 @@ class Base(SQLModel):
             logger.error(e)
             return None
 
-    @classmethod
-    def execute_query(cls, session, query: Query):
-        return query.all()
+
 
     @classmethod
     def add_value_to_sub_query(cls, column_attr, sub_filters, value):
