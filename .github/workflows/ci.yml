@@ -71,7 +71,7 @@ jobs:
         with:
           path: ~/.cache/pypoetry
           key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
-      - run: pip install poetry
+      - run: pip install poetry pytest
       - run: poetry install
       - run: python -m pytest -v tests/
 
