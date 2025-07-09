@@ -3,8 +3,12 @@ name: CI
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'nrcan_etl_toolbox/**'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'nrcan_etl_toolbox/**'
 
 jobs:
   test:
