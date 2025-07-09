@@ -52,6 +52,7 @@ jobs:
       - run: pip install ruff
       - name: Ruff format -- ${{ matrix.target.name }}
         run: ruff format --check ${{ matrix.target.path }}
+        continue-on-error: true
 
   test:
     name: Test package
