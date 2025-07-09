@@ -1,4 +1,6 @@
 name: ci-release.yml
+permissions:
+  contents: write
 on:
   push:
     branches:
