@@ -1,8 +1,10 @@
 name: ci-release.yml
 on:
   push:
+    branches:
+      - main
     tags:
-      - 'v*'
+      - 'v*.*.*'
 jobs:
   release:
     name: Create Release
@@ -15,25 +17,44 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            ~/.cache/pip
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+
       - name: Install Poetry
         run: pip install poetry
 
       - name: Install Dependencies
         run: poetry install --no-root --no-interaction --no-ansi
 
-      - name: Get version from Poetry
-        id: get_version
-        run: echo "version=$(poetry version -s)" >> $GITHUB_OUTPUT
+      - name: Extraire la version du tag
+        id: extract_tag
+        run: echo "tag_version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Mettre à jour la version Poetry
+        run: poetry version ${{ steps.extract_tag.outputs.tag_version }}
 
       - name: Build Package
         run: poetry build
 
       - name: Create GitHub Release
+        id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: v${{ steps.get_version.outputs.version }}
-          release_name: Release v${{ steps.get_version.outputs.version }}
+          tag_name: v${{ steps.extract_tag.outputs.tag_version }}
+          release_name: Release v${{ steps.extract_tag.outputs.tag_version }}
           draft: false
           prerelease: false
+
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
