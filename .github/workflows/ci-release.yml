@@ -41,6 +41,10 @@ jobs:
         id: extract_tag
         run: echo "tag_version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
+      - name: Mettre à jour la version Poetry
+        run: poetry version ${{ steps.extract_tag.outputs.tag_version }}
+
+
       - name: Commit version bump
         run: |
           git config user.name "github-actions[bot]"
@@ -49,8 +53,6 @@ jobs:
           git commit -m "chore: bump version to ${{ steps.extract_tag.outputs.tag_version }}" || echo "No changes to commit"
           git push
 
-      - name: Mettre à jour la version Poetry
-        run: poetry version ${{ steps.extract_tag.outputs.tag_version }}
 
       - name: Build Package
         run: poetry build
