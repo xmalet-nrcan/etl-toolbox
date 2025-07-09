@@ -57,7 +57,7 @@ jobs:
           git checkout ${{ steps.get_branch.outputs.branch_name }}
           git add pyproject.toml
           git commit -m "chore: bump version to ${{ steps.extract_tag.outputs.tag_version }}" || echo "No changes to commit"
-          git push
+          git push origin ${{ steps.get_branch.outputs.branch_name }}
 
 
       - name: Build Package
