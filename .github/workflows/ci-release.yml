@@ -51,7 +51,7 @@ jobs:
           git checkout main
           git add pyproject.toml
           git commit -m "chore: bump version to ${{ steps.extract_tag.outputs.tag_version }}" || echo "No changes to commit"
-          git push origin HEAD:main
+          git push origin main
 
 
       - name: Build Package
