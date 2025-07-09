@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'nrcan_etl_toolbox/etl_logging/**'
+      - 'nrcan_etl_toolbox/database/**'
+      - 'nrcan_etl_toolbox/etl_toolbox/reader/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'nrcan_etl_toolbox/etl_logging/**'
+      - 'nrcan_etl_toolbox/database/**'
+      - 'nrcan_etl_toolbox/etl_toolbox/reader/**'
+
+jobs:
+  lint:
+    name: Ruff Lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - path: ./nrcan_etl_toolbox/etl_logging
+            name: Logging
+          - path: ./nrcan_etl_toolbox/database
+            name: Database
+          - path: ./nrcan_etl_toolbox/etl_toolbox/reader
+            name: Data Reader
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+      - run: pip install ruff
+      - name: Ruff check -- ${{ matrix.target.name }}
+        run: ruff check ${{ matrix.target.path }} --output-format=github
+
+  format:
+    name: Ruff Format Check
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - path: ./nrcan_etl_toolbox/etl_logging
+            name: Logging
+          - path: ./nrcan_etl_toolbox/database
+            name: Database
+          - path: ./nrcan_etl_toolbox/etl_toolbox/reader
+            name: Data Reader
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install ruff
+      - name: Ruff format -- ${{ matrix.target.name }}
+        run: ruff format --check ${{ matrix.target.path }}
