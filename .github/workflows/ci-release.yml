@@ -44,20 +44,14 @@ jobs:
       - name: Mettre à jour la version Poetry
         run: poetry version ${{ steps.extract_tag.outputs.tag_version }}
 
-      - name: Récupérer la branche source du tag
-        id: get_branch
-        run: |
-          branch=$(git for-each-ref --format='%(refname:short)' $(git show-ref -s --head HEAD) | grep -v HEAD | head -n1)
-          echo "branch_name=${branch}" >> $GITHUB_OUTPUT
-
       - name: Commit version bump
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout ${{ steps.get_branch.outputs.branch_name }}
+          git checkout main
           git add pyproject.toml
           git commit -m "chore: bump version to ${{ steps.extract_tag.outputs.tag_version }}" || echo "No changes to commit"
-          git push origin ${{ steps.get_branch.outputs.branch_name }}
+          git push origin HEAD:main
 
 
       - name: Build Package
