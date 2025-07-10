@@ -1,5 +1,9 @@
 # ETL-LOGGING
 
+[![codecov](https://codecov.io/gh/xmalet-nrcan/xm-etl-toolbox/branch/main/graph/badge.svg)](https://codecov.io/gh/xmalet-nrcan/xm-etl-toolbox)
+
+[![CI](https://github.com/xmalet-nrcan/xm-etl-toolbox/actions/workflows/ci-release.yml/badge.svg)](https://github.com/xmalet-nrcan/xm-etl-toolbox/actions/workflows/ci-release.yml)
+
 `etl-logging` est un package Python destiné à faciliter la gestion du logging dans des processus ETL. Il offre des fonctionnalités simples et modulables pour configurer, écrire et analyser les logs de vos applications.
 
 ## Installation
