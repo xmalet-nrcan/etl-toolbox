@@ -10,59 +10,121 @@ on:
     paths-ignore:
       - 'pyproject.toml' # Ignore les modifications de ce fichier pour éviter les boucles
 jobs:
-  release:
-    if: "!contains(github.event.head_commit.message, 'chore: bump version')" # Ignore les commits de version
 
-    name: Create Release
+  test:
+    name: Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          fetch-depth: 0  # Récupère tout l'historique
-          ref: main       # Force le checkout de la branche main
+          python-version: '3.12'
+          cache: 'pip'
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Setup Poetry cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Install Dependencies
+        run: poetry install
+
+      - name: Run Tests
+        run: poetry run pytest -v --cov=. tests/
+
+      - name: Upload Coverage
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+
+  build:
+    name: Build Package
+    needs: [ test ]
+    runs-on: ubuntu-latest
+    if: success() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - name: Extract tag version
+        id: tag_version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Update version from tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: poetry version ${{ steps.tag_version.outputs.version }}
+
+      - name: Build Package
+        run: poetry build
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+
+  update_version:
+    name: Update Version & Release
+    needs: [ build ]
+    runs-on: ubuntu-latest
+    if: |
+      success() && 
+      startsWith(github.ref, 'refs/tags/v') && 
+      !contains(github.event.head_commit.message, 'chore: bump version')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/pypoetry
-            ~/.cache/pip
-          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
-
       - name: Install Poetry
-        run: pip install poetry
+        run: pipx install poetry
 
-      - name: Install Dependencies
-        run: poetry install --no-root --no-interaction --no-ansi
+      - name: Extract tag version
+        id: tag_version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      - name: Extraire la version du tag
-        id: extract_tag
-        run: echo "tag_version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Mettre à jour la version Poetry
-        run: poetry version ${{ steps.extract_tag.outputs.tag_version }}
+      - name: Update version in pyproject.toml
+        run: poetry version ${{ steps.tag_version.outputs.version }}
 
       - name: Commit version bump
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add pyproject.toml
-          git commit -m "chore: bump version to ${{ steps.extract_tag.outputs.tag_version }}" || echo "No changes to commit"
-          git push origin main 
+          git commit -m "chore: bump version to ${{ steps.tag_version.outputs.version }}" || echo "No changes to commit"
+          git push origin main
 
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
 
-      - name: Build Package
-        run: poetry build
-
-      - name: Upload Release Assets
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
+          generate_release_notes: true
+          draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
