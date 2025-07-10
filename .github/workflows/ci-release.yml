@@ -57,6 +57,11 @@ jobs:
     if: success() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -70,9 +75,18 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      - name: Update version from tag
+      - name: Update version in pyproject.toml
         if: startsWith(github.ref, 'refs/tags/v')
         run: poetry version ${{ steps.tag_version.outputs.version }}
+
+      - name: Commit version bump
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml
+          git commit -m "chore: bump version to ${{ steps.tag_version.outputs.version }}" || echo "No changes to commit"
+          git push origin main
 
       - name: Build Package
         run: poetry build
@@ -84,43 +98,13 @@ jobs:
           path: dist/
           retention-days: 7
 
-
-  update_version:
-    name: Update Version & Release
+  release:
+    name: Create GitHub Release
     needs: [ build ]
     runs-on: ubuntu-latest
-    if: |
-      success() && 
-      startsWith(github.ref, 'refs/tags/v') && 
-      !contains(github.event.head_commit.message, 'chore: bump version')
+    if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: main
-          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install Poetry
-        run: pipx install poetry
-
-      - name: Extract tag version
-        id: tag_version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Update version in pyproject.toml
-        run: poetry version ${{ steps.tag_version.outputs.version }}
-
-      - name: Commit version bump
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add pyproject.toml
-          git commit -m "chore: bump version to ${{ steps.tag_version.outputs.version }}" || echo "No changes to commit"
-          git push origin main
 
       - name: Download Build Artifacts
         uses: actions/download-artifact@v4
@@ -131,6 +115,12 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          name: "Release ${{ github.ref_name }}"
+          tag_name: ${{ github.ref_name }}
+          body: |
+            🚀 **Release ${{ github.ref_name }}**
+            
+            Cette release a été générée automatiquement par le workflow CI.
           files: dist/*
           generate_release_notes: true
           draft: false
