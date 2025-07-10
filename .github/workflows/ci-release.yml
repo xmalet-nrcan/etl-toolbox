@@ -9,9 +9,17 @@ on:
       - 'v*.*.*'
     paths-ignore:
       - 'pyproject.toml' # Ignore les modifications de ce fichier pour éviter les boucles
+  pull_request:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+    paths-ignore:
+        - 'pyproject.toml' # Ignore les modifications de ce fichier pour éviter les boucles
 jobs:
 
   test:
+    if: "!contains(github.event.head_commit.message, 'chore: bump version')" # Ignore les commits de version
     name: Tests
     runs-on: ubuntu-latest
     steps:
