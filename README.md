@@ -1,6 +1,6 @@
 # ETL-LOGGING
 
-[![codecov](https://codecov.io/gh/xmalet-nrcan/xm-etl-toolbox/branch/main/graph/badge.svg)](https://codecov.io/gh/xmalet-nrcan/xm-etl-toolbox)
+[![codecov](https://codecov.io/github/xmalet-nrcan/xm-etl-toolbox/graph/badge.svg?token=P4ISY9JL78)](https://codecov.io/github/xmalet-nrcan/xm-etl-toolbox)
 
 [![CI](https://github.com/xmalet-nrcan/xm-etl-toolbox/actions/workflows/ci-release.yml/badge.svg)](https://github.com/xmalet-nrcan/xm-etl-toolbox/actions/workflows/ci-release.yml)
 
