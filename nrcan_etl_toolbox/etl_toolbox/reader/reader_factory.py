@@ -1,6 +1,6 @@
 import os
 
-from sqlalchemy import Engine
+from sqlalchemy import Engine, Connection
 from sqlalchemy.orm import Session
 
 from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.base_reader import BaseDataReader
@@ -18,9 +18,11 @@ class ReaderFactory:
     of BaseDataReader, depending on the data source type.
     """
 
-    def __init__(self, input_source: str | Engine | Session = None, **kwargs: dict[str, str] | None):
+    def __init__(self, input_source: str | Engine | Session = None, schema=None, table_name=None,
+                 **kwargs: dict[str, str] | None):
         self._input_source = input_source
-        self._reader = self._create_reader(input_source, **kwargs)
+
+        self._reader = self._create_reader(input_source, schema=schema, table_name=table_name, **kwargs)
 
     def dataframe(self):
         return self.data
@@ -38,7 +40,7 @@ class ReaderFactory:
         return self._reader.columns
 
     @staticmethod
-    def _create_reader(input_source, **kwargs) -> BaseDataReader:
+    def _create_reader(input_source, schema=None, table_name=None, **kwargs) -> BaseDataReader:
         """
         Creates and returns an instance of a data reader.
 
@@ -59,9 +61,9 @@ class ReaderFactory:
             A reader object corresponding to the detected data source type.
         """
         # Check for SQLAlchemy-based sources
-        if isinstance(input_source, (Engine, Session)):
+        if isinstance(input_source, (Engine, Session, Connection)):
             # Parameters (e.g., schema, table_name, etc.) can be passed via **kwargs
-            return PostGisTableDataReader(input_source, **kwargs)
+            return PostGisTableDataReader(input_source, schema=schema, table_name=table_name, **kwargs)
 
         # Handle file-based sources by extension
         _, extension = os.path.splitext(str(input_source).lower())
