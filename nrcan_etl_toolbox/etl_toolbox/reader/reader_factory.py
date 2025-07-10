@@ -23,6 +23,10 @@ class ReaderFactory:
         self._reader = self._create_reader(input_source, **kwargs)
 
     def dataframe(self):
+        return self.data
+
+    @property
+    def data(self):
         return self._reader.dataframe
 
     @property
