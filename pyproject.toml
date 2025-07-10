@@ -35,6 +35,7 @@ packages = [{ include = "nrcan_etl_toolbox" }
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.1"
 pytest-cov = "^6.2.1"
+testcontainers = "^4.10.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
