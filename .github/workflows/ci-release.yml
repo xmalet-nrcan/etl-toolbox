@@ -3,15 +3,11 @@ permissions:
   contents: write
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*.*.*'
     paths-ignore:
       - 'pyproject.toml' # Ignore les modifications de ce fichier pour éviter les boucles
   pull_request:
-    branches:
-      - main
     tags:
       - 'v*.*.*'
     paths-ignore:
@@ -19,7 +15,8 @@ on:
 jobs:
 
   test:
-    if: "!contains(github.event.head_commit.message, 'chore: bump version')" # Ignore les commits de version
+    if:  "(github.ref == 'refs/heads/main' && startsWith(github.ref, 'refs/tags/v') ) && !contains(github.event.head_commit.message, 'chore: bump version')"
+
     name: Tests
     runs-on: ubuntu-latest
     steps:
@@ -54,7 +51,7 @@ jobs:
     name: Build Package
     needs: [ test ]
     runs-on: ubuntu-latest
-    if: success() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    if: success() && (github.ref == 'refs/heads/main' && startsWith(github.ref, 'refs/tags/v'))
     steps:
       - uses: actions/checkout@v4
         with:
