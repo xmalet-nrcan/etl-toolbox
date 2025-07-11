@@ -53,13 +53,13 @@ def test_create_reader_file_types(input_source, extension, expected_class):
 
 def test_create_reader_postgis_engine():
     with patch("nrcan_etl_toolbox.etl_toolbox.reader.reader_factory.PostGisTableDataReader") as PostGisTableDataReader:
-        engine = MagicMock(spec=Engine)
+        engine = create_engine(postgres.get_connection_url(), echo=False, future=True)
         mock_reader = MagicMock()
         PostGisTableDataReader.return_value = mock_reader
 
-        factory = ReaderFactory(engine, schema="myschema", table="mytable")
+        factory = ReaderFactory(engine, schema="myschema", table_name="mytable")
         assert factory.reader is mock_reader
-        PostGisTableDataReader.assert_called_once_with(engine, schema="myschema", table="mytable")
+        PostGisTableDataReader.assert_called_once_with(engine, schema="myschema", table_name="mytable")
 
 def test_create_reader_postgis_session():
     session = Session(bind=create_engine(postgres.get_connection_url(), echo=False, future=True))
@@ -69,18 +69,22 @@ def test_create_reader_postgis_session():
     # PostGisTableDataReader.assert_called_once_with(session, schema="myschema", table_name="mytable")
 
 def test_create_reader_postgis_table_name():
-    # Vérifie qu'un nom de table PostGIS (str) crée un PostGisTableDataReader
-    with patch("nrcan_etl_toolbox.etl_toolbox.reader.reader_factory.PostGisTableDataReader") as PostGisTableDataReader:
-        engine = create_engine(postgres.get_connection_url(), echo=False, future=True)
-        with engine.connect() as conn:
+    """
+    Test the creation of a PostGisTableDataReader with a connection , table_name and schema.
+    """
+    # Simule un moteur SQLAlchemy pour le test
+    engine = create_engine(postgres.get_connection_url())
+    with engine.connect() as conn:
 
-            table_name = "ma_table_postgis"
-            mock_reader = MagicMock()
-            PostGisTableDataReader.return_value = mock_reader
 
-            factory = ReaderFactory(conn, schema="public", table_name=table_name)
-            assert factory.reader is mock_reader
-            PostGisTableDataReader.assert_called_once_with(table_name, schema="public")
+        # Création de la factory avec le nom de la table
+        factory = ReaderFactory(conn,  table_name="ma_table_postgis", schema="public")
+
+        # Vérifie que le lecteur créé est bien un PostGisTableDataReader
+        assert isinstance(factory.reader, PostGisTableDataReader)
+        assert factory.reader.table_name == "ma_table_postgis"
+        assert factory.reader.schema == "public"
+
 
 def test_create_reader_unsupported_extension():
     with pytest.raises(ValueError, match="Type de fichier non pris en charge"):
@@ -89,13 +93,14 @@ def test_create_reader_unsupported_extension():
 def test_dataframe_and_columns_properties():
     # Simule un reader avec les propriétés nécessaires
     mock_reader = MagicMock()
-    mock_reader.dataframe = pd.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
+    df_for_test = pd.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
+    mock_reader.dataframe = df_for_test.copy(deep=True)
     mock_reader.columns = ["col1", "col2"]
 
     with patch("nrcan_etl_toolbox.etl_toolbox.reader.reader_factory.ReaderFactory._create_reader", return_value=mock_reader):
         factory = ReaderFactory("file.csv")
-        assert factory.data == "df"
-        assert factory.dataframe() == "df"
+        assert factory.data.equals(df_for_test)
+        assert factory.dataframe().equals(df_for_test)
         assert factory.columns == ["col1", "col2"]
 
 
