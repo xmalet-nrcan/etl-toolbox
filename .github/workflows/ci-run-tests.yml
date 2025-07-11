@@ -1,4 +1,4 @@
-name: CI
+name: ci-test-no-build
 
 on:
   push:
