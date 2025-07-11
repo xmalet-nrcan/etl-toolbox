@@ -21,13 +21,13 @@ def test_session():
         yield session
 
 
-class TestSampleModel(Base, table=True):
+class SampleModel(Base, table=True):
     __tablename__ = "test_sample_model"
     id: int = Field(primary_key=True)
     name: str
 
 
-class TestSampleModel2(Base, table=True):
+class SampleModel2(Base, table=True):
     __tablename__ = "test_sample_model2"
     id: int = Field(sa_column=Column(Integer, Identity(start=1, cycle=True), primary_key=True, autoincrement=True))
     name: str = Field(sa_column=Column(String))
@@ -37,45 +37,45 @@ class TestSampleModel2(Base, table=True):
 
 
 def test_base_equality_method(test_session: Session):
-    obj1 = TestSampleModel(id=1, name="Test")
-    obj2 = TestSampleModel(id=1, name="Test")
+    obj1 = SampleModel(id=1, name="Test")
+    obj2 = SampleModel(id=1, name="Test")
     assert obj1 == obj2
 
 
 def test_base_hash_method(test_session: Session):
-    obj = TestSampleModel(id=1, name="Test")
+    obj = SampleModel(id=1, name="Test")
     assert isinstance(hash(obj), int)
 
 
 def test_is_identity_column_method():
-    assert not TestSampleModel.is_identity_column("name")
-    assert not TestSampleModel.is_identity_column("id"), (
+    assert not SampleModel.is_identity_column("name")
+    assert not SampleModel.is_identity_column("id"), (
         "Column ID from TestSampleModel should not be an identity column"
     )
 
-    assert TestSampleModel2.is_identity_column("id"), "Column ID from TestSampleModel2 should be an identity column"
+    assert SampleModel2.is_identity_column("id"), "Column ID from TestSampleModel2 should be an identity column"
 
 
 def test_get_column_defaults_not_callable():
-    assert TestSampleModel2.get_default_values_for_columns(["name_as_default"]) == {
+    assert SampleModel2.get_default_values_for_columns(["name_as_default"]) == {
         "name_as_default": DEFAULT_STR_VALUE
     }
-    assert TestSampleModel2.get_default_value_from_column("name_as_default") == DEFAULT_STR_VALUE
+    assert SampleModel2.get_default_value_from_column("name_as_default") == DEFAULT_STR_VALUE
 
 
 def test_get_column_defaults_callable():
-    assert TestSampleModel2.get_default_value_from_column("created_at") == datetime.date.today()
+    assert SampleModel2.get_default_value_from_column("created_at") == datetime.date.today()
 
 
 def test_get_column_defaults_callable_with_default_value():
-    assert TestSampleModel2.get_default_values_for_columns(["name_as_default", "created_at"]) == {
+    assert SampleModel2.get_default_values_for_columns(["name_as_default", "created_at"]) == {
         "name_as_default": DEFAULT_STR_VALUE,
         "created_at": datetime.date.today(),
     }
 
 
 def test_get_column_defaults_with_default_value_is_none():
-    assert TestSampleModel2.get_default_value_from_column("name") is None
+    assert SampleModel2.get_default_value_from_column("name") is None
 
 
 def test_remove_accents_characters_from_string():
