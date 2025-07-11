@@ -1,4 +1,4 @@
-name: ci-release.yml
+name: ci-test-build-release
 permissions:
   contents: write
 on:
