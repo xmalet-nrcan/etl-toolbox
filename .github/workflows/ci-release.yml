@@ -39,10 +39,16 @@ jobs:
         run: poetry install
 
       - name: Run Tests
-        run: poetry run pytest -v --cov --cov-branch --cov-report=xml tests/
+        run: poetry run pytest --cov --junitxml=junit.xml -o junit_family=legacy
 
-      - name: Upload coverage reports to Codecov
+      # Copy and paste the codecov/test-results-action here
+      - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
