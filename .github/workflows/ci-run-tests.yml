@@ -33,7 +33,7 @@ jobs:
       - name: Install Dependencies
         run: poetry install
       - name: Run Tests
-        run: poetry run pytest --cov --junitxml=junit.xml -o junit_family=legacy
+        run: poetry run pytest -v --cov --cov-branch --cov-report=xml tests/
 
       # Copy and paste the codecov/test-results-action here
       - name: Upload coverage to Codecov
