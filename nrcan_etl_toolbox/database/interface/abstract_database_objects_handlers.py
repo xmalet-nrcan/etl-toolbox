@@ -7,7 +7,7 @@ import sqlalchemy.engine
 from psycopg2.errors import UniqueViolation
 from sqlalchemy import BinaryExpression, create_engine, func
 from sqlalchemy.exc import DataError, IntegrityError
-from sqlalchemy.orm import InstrumentedAttribute, Session
+from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
 
 from nrcan_etl_toolbox.database.orm import FONCTION_FILTER, LIMIT, ORDER_BY, Base
 from nrcan_etl_toolbox.etl_logging import CustomLogger
@@ -18,6 +18,8 @@ T = TypeVar("T", bound="Base")
 class AbstractDatabaseObjectsInterface:
     engine: sqlalchemy.engine.Engine = None
     _session: sqlalchemy.orm.session.Session = None
+    SessionLocal = None
+
     logger = CustomLogger("database_objects_handler", logger_type="default")
 
     def __init__(self, database_url: str, db_objects_to_treat: list = None, logger_level="DEBUG"):
@@ -41,10 +43,7 @@ class AbstractDatabaseObjectsInterface:
 
         self._max_number_of_retry = 10
 
-    @property
-    def session(self):
-        with self._session.begin(nested=True):
-            return self._session
+
 
     def clear_database_objects(self):
         for obj_type in self._database_objects_to_treat:
@@ -56,44 +55,32 @@ class AbstractDatabaseObjectsInterface:
         AbstractDatabaseObjectsInterface._session = Session(
             bind=AbstractDatabaseObjectsInterface.engine, expire_on_commit=False
         )
+        AbstractDatabaseObjectsInterface.SessionLocal = sessionmaker(
+            bind=AbstractDatabaseObjectsInterface.engine, expire_on_commit=False
+        )
         Base.metadata.create_all(AbstractDatabaseObjectsInterface.engine)
         self.logger.info("Connected to database")
 
     def _insert_object(self, db_object: Base) -> bool | None:
-        with self._session.begin(nested=True):
+        with self.SessionLocal() as session:
             try:
-                # Ajout d'un seul objet à la session
-                self.logger.debug(db_object)
-                self._session.add(db_object)
-                self._session.commit()
+                session.add(db_object)
+                session.commit()
                 return True
-            except UniqueViolation as v:
-                self._session.rollback()
-                self.logger.error(f"UniqueViolation - {db_object} \n{v}", stacklevel=3)
-                raise v
-
             except IntegrityError as e:
-                self._session.rollback()
+                session.rollback()
                 if isinstance(e.orig, UniqueViolation):
-                    if isinstance(e.orig, UniqueViolation):
-                        constraint_match = re.search(r"unique « (.*?) »", str(e.args))
-                        contraint_name = constraint_match.group(1) if constraint_match else None
-                        if "uni_" in contraint_name or "pk_" in contraint_name:
-                            return True
-                        else:
-                            self.logger.error(f"IntegrityError - {db_object} \n{e}", stacklevel=3)
-                            raise e
-                    return None
-                else:
-                    # Annule les modifications en cas d'erreur d'intégrité
-                    self._session.rollback()
-                    self.logger.error(f"IntegrityError - {db_object} \n{e}", stacklevel=3)
-                    return None
-
+                    constraint_match = re.search(r"unique « (.*?) »", str(e.args))
+                    contraint_name = constraint_match.group(1) if constraint_match else None
+                    if contraint_name and ("uni_" in contraint_name or "pk_" in contraint_name):
+                        return True
+                self.logger.error(f"IntegrityError - {db_object} \n{e}", stacklevel=3)
+                return None
             except Exception as e:
-                # Annule les modifications pour toute autre erreur
-                self._session.rollback()
-                raise e from e
+                session.rollback()
+                self.logger.error(f"Unexpected error - {db_object} \n{e}", stacklevel=3)
+                raise
+
 
     def insert_object(self, db_object: Base):
         return self._insert_object(db_object)
@@ -166,17 +153,17 @@ class AbstractDatabaseObjectsInterface:
         return None
 
     def _get_element_in_database(self, table_model: type[T], condition="or", **kwargs) -> list[T] | None:
-        with self._session.begin(nested=True):
+        with self.SessionLocal() as session:
             try:
-                data = table_model.query_object(session=self._session, condition=condition, **kwargs)
+                data = table_model.query_object(session=session, condition=condition, **kwargs)
             except DataError:
-                self._session.rollback()
-
+                session.rollback()
                 return None
             except Exception:
-                self._session.rollback()
+                session.rollback()
                 return None
-
+            finally:
+                session.close()
             return data
 
     def _get_or_create_element(
