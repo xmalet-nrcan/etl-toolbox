@@ -1,14 +1,13 @@
 import re
 import unicodedata
 from collections import defaultdict
-from contextlib import contextmanager
 from typing import TypeVar
-
+from contextlib import contextmanager
 import sqlalchemy.engine
 from psycopg2.errors import UniqueViolation
 from sqlalchemy import BinaryExpression, create_engine, func
 from sqlalchemy.exc import DataError, IntegrityError
-from sqlalchemy.orm import InstrumentedAttribute, sessionmaker
+from sqlalchemy.orm import InstrumentedAttribute, Session
 
 from nrcan_etl_toolbox.database.orm import FONCTION_FILTER, LIMIT, ORDER_BY, Base
 from nrcan_etl_toolbox.etl_logging import CustomLogger
@@ -18,7 +17,7 @@ T = TypeVar("T", bound="Base")
 
 class AbstractDatabaseObjectsInterface:
     engine: sqlalchemy.engine.Engine = None
-    _session = None
+    _session: sqlalchemy.orm.session.Session = None
     logger = CustomLogger("database_objects_handler", logger_type="default")
 
     def __init__(self, database_url: str, db_objects_to_treat: list = None, logger_level="DEBUG"):
@@ -49,39 +48,29 @@ class AbstractDatabaseObjectsInterface:
     def _connect_to_database(self, database_url):
         """Connect to the database."""
         AbstractDatabaseObjectsInterface.engine = create_engine(database_url)
-        AbstractDatabaseObjectsInterface._session = sessionmaker(bind=AbstractDatabaseObjectsInterface.engine)
+        AbstractDatabaseObjectsInterface._session = Session(
+            bind=AbstractDatabaseObjectsInterface.engine, expire_on_commit=False
+        )
         Base.metadata.create_all(AbstractDatabaseObjectsInterface.engine)
         self.logger.info("Connected to database")
 
-    @contextmanager
-    @property
-    def session(self):
-        session = self._session()
-        try:
-            yield session
-            session.commit()
-        except:
-            session.rollback()
-            raise
-        finally:
-            session.close()
+
 
     def _insert_object(self, db_object: Base) -> bool | None:
-        with self.session as session:
-            session.begin(nested=True)
+        with self._session.begin(nested=True):
             try:
                 # Ajout d'un seul objet à la session
                 self.logger.debug(db_object)
-                session.add(db_object)
-                session.commit()
+                self._session.add(db_object)
+                self._session.commit()
                 return True
             except UniqueViolation as v:
-                session.rollback()
+                self._session.rollback()
                 self.logger.error(f"UniqueViolation - {db_object} \n{v}", stacklevel=3)
                 raise v
 
             except IntegrityError as e:
-                session.rollback()
+                self._session.rollback()
                 if isinstance(e.orig, UniqueViolation):
                     if isinstance(e.orig, UniqueViolation):
                         constraint_match = re.search(r"unique « (.*?) »", str(e.args))
@@ -94,13 +83,13 @@ class AbstractDatabaseObjectsInterface:
                     return None
                 else:
                     # Annule les modifications en cas d'erreur d'intégrité
-                    session.rollback()
+                    self._session.rollback()
                     self.logger.error(f"IntegrityError - {db_object} \n{e}", stacklevel=3)
                     return None
 
             except Exception as e:
                 # Annule les modifications pour toute autre erreur
-                session.rollback()
+                self._session.rollback()
                 raise e from e
 
     def insert_object(self, db_object: Base):
@@ -174,16 +163,15 @@ class AbstractDatabaseObjectsInterface:
         return None
 
     def _get_element_in_database(self, table_model: type[T], condition="or", **kwargs) -> list[T] | None:
-        with self.session as session:
-            session.begin(nested=True)
+        with self._session.begin(nested=True):
             try:
-                data = table_model.query_object(session=session, condition=condition, **kwargs)
+                data = table_model.query_object(session=self._session, condition=condition, **kwargs)
             except DataError:
-                session.rollback()
+                self._session.rollback()
 
                 return None
             except Exception:
-                session.rollback()
+                self._session.rollback()
                 return None
 
             return data
@@ -191,8 +179,7 @@ class AbstractDatabaseObjectsInterface:
     def _get_or_create_element(
         self, dict_element: str, table_model: type[T], condition="and", **kwargs
     ) -> list[T] | None:
-        with self.session as session:
-            session.begin(nested=True)
+        with self._session.begin(nested=True):
             try:
                 data = self._get_element_in_database(table_model=table_model, condition=condition, **kwargs)
                 if data is not None and len(data) == 0:
@@ -200,7 +187,7 @@ class AbstractDatabaseObjectsInterface:
                         dict_element=dict_element, table_model=table_model, **kwargs
                     )
             except Exception as e:
-                session.rollback()
+                self._session.rollback()
                 self.logger.warning(
                     f"ON _get_or_create_element with \n{table_model}, {condition}, {kwargs} \nRAISED {e}", stacklevel=3
                 )
