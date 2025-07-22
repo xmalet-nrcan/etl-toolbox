@@ -41,6 +41,11 @@ class AbstractDatabaseObjectsInterface:
 
         self._max_number_of_retry = 10
 
+    @property
+    def session(self):
+        with self._session.begin(nested=True):
+            return self._session
+
     def clear_database_objects(self):
         for obj_type in self._database_objects_to_treat:
             self._database_objects[obj_type].clear()
