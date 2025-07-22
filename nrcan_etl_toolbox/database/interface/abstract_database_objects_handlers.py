@@ -1,10 +1,10 @@
 import re
+import unicodedata
 from collections import defaultdict
 from contextlib import contextmanager
 from typing import TypeVar
 
 import sqlalchemy.engine
-import unicodedata
 from psycopg2.errors import UniqueViolation
 from sqlalchemy import BinaryExpression, create_engine, func
 from sqlalchemy.exc import DataError, IntegrityError
@@ -189,7 +189,7 @@ class AbstractDatabaseObjectsInterface:
             return data
 
     def _get_or_create_element(
-            self, dict_element: str, table_model: type[T], condition="and", **kwargs
+        self, dict_element: str, table_model: type[T], condition="and", **kwargs
     ) -> list[T] | None:
         with self.session as session:
             session.begin(nested=True)
@@ -245,11 +245,11 @@ class AbstractDatabaseObjectsInterface:
                 self.logger.debug(f"Associated {elt} to {associate_to}")
 
     def _get_similarity_func_and_order_by_for_column(
-            self,
-            column: str | list[str] | InstrumentedAttribute | list[InstrumentedAttribute],
-            element: str,
-            similarity_filter: float = 0.3,
-            result_limit: int = 10,
+        self,
+        column: str | list[str] | InstrumentedAttribute | list[InstrumentedAttribute],
+        element: str,
+        similarity_filter: float = 0.3,
+        result_limit: int = 10,
     ) -> dict:
         """
         Generates a dictionary containing a similarity function, an order by
@@ -294,8 +294,8 @@ class AbstractDatabaseObjectsInterface:
 
     @staticmethod
     def _get_similarity_func(
-            in_col: str | InstrumentedAttribute,
-            text_to_compare: str,
+        in_col: str | InstrumentedAttribute,
+        text_to_compare: str,
     ):
         return func.similarity(in_col, text_to_compare)
 

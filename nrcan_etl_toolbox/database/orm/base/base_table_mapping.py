@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from typing import Any, TypeVar
-from contextlib import contextmanager
+
 import sqlalchemy.schema
 from geoalchemy2 import WKBElement
 from shapely.geometry.base import BaseGeometry
