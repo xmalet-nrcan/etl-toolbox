@@ -1,13 +1,14 @@
 import re
-import unicodedata
 from collections import defaultdict
+from contextlib import contextmanager
 from typing import TypeVar
 
 import sqlalchemy.engine
+import unicodedata
 from psycopg2.errors import UniqueViolation
 from sqlalchemy import BinaryExpression, create_engine, func
 from sqlalchemy.exc import DataError, IntegrityError
-from sqlalchemy.orm import InstrumentedAttribute, Session
+from sqlalchemy.orm import InstrumentedAttribute, sessionmaker
 
 from nrcan_etl_toolbox.database.orm import FONCTION_FILTER, LIMIT, ORDER_BY, Base
 from nrcan_etl_toolbox.etl_logging import CustomLogger
@@ -17,7 +18,7 @@ T = TypeVar("T", bound="Base")
 
 class AbstractDatabaseObjectsInterface:
     engine: sqlalchemy.engine.Engine = None
-    session: sqlalchemy.orm.session.Session = None
+    _session = None
     logger = CustomLogger("database_objects_handler", logger_type="default")
 
     def __init__(self, database_url: str, db_objects_to_treat: list = None, logger_level="DEBUG"):
@@ -48,27 +49,39 @@ class AbstractDatabaseObjectsInterface:
     def _connect_to_database(self, database_url):
         """Connect to the database."""
         AbstractDatabaseObjectsInterface.engine = create_engine(database_url)
-        AbstractDatabaseObjectsInterface.session = Session(
-            bind=AbstractDatabaseObjectsInterface.engine, expire_on_commit=False
-        )
+        AbstractDatabaseObjectsInterface._session = sessionmaker(bind=AbstractDatabaseObjectsInterface.engine)
         Base.metadata.create_all(AbstractDatabaseObjectsInterface.engine)
         self.logger.info("Connected to database")
 
+    @contextmanager
+    @property
+    def session(self):
+        session = self._session()
+        try:
+            yield session
+            session.commit()
+        except:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
     def _insert_object(self, db_object: Base) -> bool | None:
-        with self.session.begin(nested=True):
+        with self.session as session:
+            session.begin(nested=True)
             try:
                 # Ajout d'un seul objet à la session
                 self.logger.debug(db_object)
-                self.session.add(db_object)
-                self.session.commit()
+                session.add(db_object)
+                session.commit()
                 return True
             except UniqueViolation as v:
-                self.session.rollback()
+                session.rollback()
                 self.logger.error(f"UniqueViolation - {db_object} \n{v}", stacklevel=3)
                 raise v
 
             except IntegrityError as e:
-                self.session.rollback()
+                session.rollback()
                 if isinstance(e.orig, UniqueViolation):
                     if isinstance(e.orig, UniqueViolation):
                         constraint_match = re.search(r"unique « (.*?) »", str(e.args))
@@ -81,13 +94,13 @@ class AbstractDatabaseObjectsInterface:
                     return None
                 else:
                     # Annule les modifications en cas d'erreur d'intégrité
-                    self.session.rollback()
+                    session.rollback()
                     self.logger.error(f"IntegrityError - {db_object} \n{e}", stacklevel=3)
                     return None
 
             except Exception as e:
                 # Annule les modifications pour toute autre erreur
-                self.session.rollback()
+                session.rollback()
                 raise e from e
 
     def insert_object(self, db_object: Base):
@@ -161,23 +174,25 @@ class AbstractDatabaseObjectsInterface:
         return None
 
     def _get_element_in_database(self, table_model: type[T], condition="or", **kwargs) -> list[T] | None:
-        with self.session.begin(nested=True):
+        with self.session as session:
+            session.begin(nested=True)
             try:
-                data = table_model.query_object(session=self.session, condition=condition, **kwargs)
+                data = table_model.query_object(session=session, condition=condition, **kwargs)
             except DataError:
-                self.session.rollback()
+                session.rollback()
 
                 return None
             except Exception:
-                self.session.rollback()
+                session.rollback()
                 return None
 
             return data
 
     def _get_or_create_element(
-        self, dict_element: str, table_model: type[T], condition="and", **kwargs
+            self, dict_element: str, table_model: type[T], condition="and", **kwargs
     ) -> list[T] | None:
-        with self.session.begin(nested=True):
+        with self.session as session:
+            session.begin(nested=True)
             try:
                 data = self._get_element_in_database(table_model=table_model, condition=condition, **kwargs)
                 if data is not None and len(data) == 0:
@@ -185,7 +200,7 @@ class AbstractDatabaseObjectsInterface:
                         dict_element=dict_element, table_model=table_model, **kwargs
                     )
             except Exception as e:
-                self.session.rollback()
+                session.rollback()
                 self.logger.warning(
                     f"ON _get_or_create_element with \n{table_model}, {condition}, {kwargs} \nRAISED {e}", stacklevel=3
                 )
@@ -230,11 +245,11 @@ class AbstractDatabaseObjectsInterface:
                 self.logger.debug(f"Associated {elt} to {associate_to}")
 
     def _get_similarity_func_and_order_by_for_column(
-        self,
-        column: str | list[str] | InstrumentedAttribute | list[InstrumentedAttribute],
-        element: str,
-        similarity_filter: float = 0.3,
-        result_limit: int = 10,
+            self,
+            column: str | list[str] | InstrumentedAttribute | list[InstrumentedAttribute],
+            element: str,
+            similarity_filter: float = 0.3,
+            result_limit: int = 10,
     ) -> dict:
         """
         Generates a dictionary containing a similarity function, an order by
@@ -279,8 +294,8 @@ class AbstractDatabaseObjectsInterface:
 
     @staticmethod
     def _get_similarity_func(
-        in_col: str | InstrumentedAttribute,
-        text_to_compare: str,
+            in_col: str | InstrumentedAttribute,
+            text_to_compare: str,
     ):
         return func.similarity(in_col, text_to_compare)
 
