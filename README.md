@@ -3,7 +3,7 @@
 
 
 [![codecov](https://codecov.io/github/xmalet-nrcan/etl-toolbox/graph/badge.svg?token=L1B4RHVN2E)](https://codecov.io/github/xmalet-nrcan/etl-toolbox)
-[![CI](https://github.com/xmalet-nrcan/xm-etl-toolbox/actions/workflows/ci-release.yml/badge.svg)](https://github.com/xmalet-nrcan/xm-etl-toolbox/actions/workflows/ci-release.yml)
+[![CI](https://github.com/xmalet-nrcan/etl-toolbox/actions/workflows/ci-release.yml/badge.svg)](https://github.com/xmalet-nrcan/etl-toolbox/actions/workflows/ci-release.yml)
 
 Pour la version française de ce document, consultez [README-fr.md](README-fr.md).
 
