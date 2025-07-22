@@ -2,7 +2,7 @@ import re
 import unicodedata
 from collections import defaultdict
 from typing import TypeVar
-from contextlib import contextmanager
+
 import sqlalchemy.engine
 from psycopg2.errors import UniqueViolation
 from sqlalchemy import BinaryExpression, create_engine, func
@@ -53,8 +53,6 @@ class AbstractDatabaseObjectsInterface:
         )
         Base.metadata.create_all(AbstractDatabaseObjectsInterface.engine)
         self.logger.info("Connected to database")
-
-
 
     def _insert_object(self, db_object: Base) -> bool | None:
         with self._session.begin(nested=True):
