@@ -149,8 +149,9 @@ class AbstractDatabaseObjectsInterface:
         return None
 
     def _get_element_in_database(self, table_model: type[T], condition="or", **kwargs) -> list[T] | None:
-        with self.session.begin(nested=True) as session:
+        with self.session as session:
             try:
+                session.begin(nested=True)
                 data = table_model.query_object(session=session, condition=condition, **kwargs)
             except DataError:
                 session.rollback()
@@ -165,28 +166,28 @@ class AbstractDatabaseObjectsInterface:
     def _get_or_create_element(
         self, dict_element: str, table_model: type[T], condition="and", **kwargs
     ) -> list[T] | None:
-        with self.session.begin(nested=True):
-            try:
-                data = self._get_element_in_database(table_model=table_model, condition=condition, **kwargs)
-                if data is not None and len(data) == 0:
-                    data = self._get_element_to_be_inserted(
-                        dict_element=dict_element, table_model=table_model, **kwargs
-                    )
-            except Exception as e:
-                self.session.rollback()
-                self.logger.warning(
-                    f"ON _get_or_create_element with \n{table_model}, {condition}, {kwargs} \nRAISED {e}", stacklevel=3
+        try:
+            self.session.begin(nested=True)
+            data = self._get_element_in_database(table_model=table_model, condition=condition, **kwargs)
+            if data is not None and len(data) == 0:
+                data = self._get_element_to_be_inserted(
+                    dict_element=dict_element, table_model=table_model, **kwargs
                 )
-            else:
-                if data is not None:
-                    if len(data) == 0:
-                        return [self._create_element(dict_element, table_model, **kwargs)]
-                    elif len(data) <= 1:
-                        return data
-
-                        # raise Exception(f"More than one {table_model.__name__} found with the same parameters")
-                else:
+        except Exception as e:
+            self.session.rollback()
+            self.logger.warning(
+                f"ON _get_or_create_element with \n{table_model}, {condition}, {kwargs} \nRAISED {e}", stacklevel=3
+            )
+        else:
+            if data is not None:
+                if len(data) == 0:
+                    return [self._create_element(dict_element, table_model, **kwargs)]
+                elif len(data) <= 1:
                     return data
+
+                    # raise Exception(f"More than one {table_model.__name__} found with the same parameters")
+            else:
+                return data
 
     def _get_element_to_be_inserted(self, dict_element: str, table_model: type[T], **kwargs) -> list[T] | None:
         to_return = []
