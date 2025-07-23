@@ -18,6 +18,8 @@ T = TypeVar("T", bound="Base")
 class AbstractDatabaseObjectsInterface:
     engine: sqlalchemy.engine.Engine = None
     session: sqlalchemy.orm.session.Session = None
+    SessionLocal = None
+
     logger = CustomLogger("database_objects_handler", logger_type="default")
 
     def __init__(self, database_url: str, db_objects_to_treat: list = None, logger_level="DEBUG"):
@@ -51,44 +53,30 @@ class AbstractDatabaseObjectsInterface:
         AbstractDatabaseObjectsInterface.session = Session(
             bind=AbstractDatabaseObjectsInterface.engine, expire_on_commit=False
         )
+
         Base.metadata.create_all(AbstractDatabaseObjectsInterface.engine)
         self.logger.info("Connected to database")
 
     def _insert_object(self, db_object: Base) -> bool | None:
-        with self.session.begin(nested=True):
+        with self.session as session:
             try:
-                # Ajout d'un seul objet à la session
-                self.logger.debug(db_object)
-                self.session.add(db_object)
-                self.session.commit()
+                session.begin(nested=True)
+                session.add(db_object)
+                session.commit()
                 return True
-            except UniqueViolation as v:
-                self.session.rollback()
-                self.logger.error(f"UniqueViolation - {db_object} \n{v}", stacklevel=3)
-                raise v
-
             except IntegrityError as e:
-                self.session.rollback()
+                session.rollback()
                 if isinstance(e.orig, UniqueViolation):
-                    if isinstance(e.orig, UniqueViolation):
-                        constraint_match = re.search(r"unique « (.*?) »", str(e.args))
-                        contraint_name = constraint_match.group(1) if constraint_match else None
-                        if "uni_" in contraint_name or "pk_" in contraint_name:
-                            return True
-                        else:
-                            self.logger.error(f"IntegrityError - {db_object} \n{e}", stacklevel=3)
-                            raise e
-                    return None
-                else:
-                    # Annule les modifications en cas d'erreur d'intégrité
-                    self.session.rollback()
-                    self.logger.error(f"IntegrityError - {db_object} \n{e}", stacklevel=3)
-                    return None
-
+                    constraint_match = re.search(r"unique « (.*?) »", str(e.args))
+                    contraint_name = constraint_match.group(1) if constraint_match else None
+                    if contraint_name and ("uni_" in contraint_name or "pk_" in contraint_name):
+                        return True
+                self.logger.error(f"IntegrityError - {db_object} \n{e}", stacklevel=3)
+                return None
             except Exception as e:
-                # Annule les modifications pour toute autre erreur
-                self.session.rollback()
-                raise e from e
+                session.rollback()
+                self.logger.error(f"Unexpected error - {db_object} \n{e}", stacklevel=3)
+                raise
 
     def insert_object(self, db_object: Base):
         return self._insert_object(db_object)
@@ -161,44 +149,45 @@ class AbstractDatabaseObjectsInterface:
         return None
 
     def _get_element_in_database(self, table_model: type[T], condition="or", **kwargs) -> list[T] | None:
-        with self.session.begin(nested=True):
+        with self.session as session:
             try:
-                data = table_model.query_object(session=self.session, condition=condition, **kwargs)
+                session.begin(nested=True)
+                data = table_model.query_object(session=session, condition=condition, **kwargs)
             except DataError:
-                self.session.rollback()
-
+                session.rollback()
                 return None
             except Exception:
-                self.session.rollback()
+                session.rollback()
                 return None
-
+            finally:
+                session.commit()
             return data
 
     def _get_or_create_element(
         self, dict_element: str, table_model: type[T], condition="and", **kwargs
     ) -> list[T] | None:
-        with self.session.begin(nested=True):
-            try:
-                data = self._get_element_in_database(table_model=table_model, condition=condition, **kwargs)
-                if data is not None and len(data) == 0:
-                    data = self._get_element_to_be_inserted(
-                        dict_element=dict_element, table_model=table_model, **kwargs
-                    )
-            except Exception as e:
-                self.session.rollback()
-                self.logger.warning(
-                    f"ON _get_or_create_element with \n{table_model}, {condition}, {kwargs} \nRAISED {e}", stacklevel=3
+        try:
+            self.session.begin(nested=True)
+            data = self._get_element_in_database(table_model=table_model, condition=condition, **kwargs)
+            if data is not None and len(data) == 0:
+                data = self._get_element_to_be_inserted(
+                    dict_element=dict_element, table_model=table_model, **kwargs
                 )
-            else:
-                if data is not None:
-                    if len(data) == 0:
-                        return [self._create_element(dict_element, table_model, **kwargs)]
-                    elif len(data) <= 1:
-                        return data
-
-                        # raise Exception(f"More than one {table_model.__name__} found with the same parameters")
-                else:
+        except Exception as e:
+            self.session.rollback()
+            self.logger.warning(
+                f"ON _get_or_create_element with \n{table_model}, {condition}, {kwargs} \nRAISED {e}", stacklevel=3
+            )
+        else:
+            if data is not None:
+                if len(data) == 0:
+                    return [self._create_element(dict_element, table_model, **kwargs)]
+                elif len(data) >= 1:
                     return data
+
+                    # raise Exception(f"More than one {table_model.__name__} found with the same parameters")
+            else:
+                return data
 
     def _get_element_to_be_inserted(self, dict_element: str, table_model: type[T], **kwargs) -> list[T] | None:
         to_return = []

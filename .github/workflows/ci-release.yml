@@ -1,17 +1,13 @@
-name: ci-release.yml
+name: ci-test-build-release
 permissions:
   contents: write
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*.*.*'
     paths-ignore:
       - 'pyproject.toml' # Ignore les modifications de ce fichier pour éviter les boucles
   pull_request:
-    branches:
-      - main
     tags:
       - 'v*.*.*'
     paths-ignore:
@@ -19,7 +15,8 @@ on:
 jobs:
 
   test:
-    if: "!contains(github.event.head_commit.message, 'chore: bump version')" # Ignore les commits de version
+    if:  "!contains(github.event.head_commit.message, 'chore: bump version')"
+
     name: Tests
     runs-on: ubuntu-latest
     steps:
@@ -44,8 +41,14 @@ jobs:
       - name: Run Tests
         run: poetry run pytest -v --cov --cov-branch --cov-report=xml tests/
 
-      - name: Upload coverage reports to Codecov
+      # Copy and paste the codecov/test-results-action here
+      - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 

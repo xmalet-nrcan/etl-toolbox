@@ -1,6 +1,7 @@
 import os
 
-from sqlalchemy import Engine, Connection
+import pandas as pd
+from sqlalchemy import Connection, Engine
 from sqlalchemy.orm import Session
 
 from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.base_reader import BaseDataReader
@@ -18,17 +19,22 @@ class ReaderFactory:
     of BaseDataReader, depending on the data source type.
     """
 
-    def __init__(self, input_source: str | Engine | Session = None, schema=None, table_name=None,
-                 **kwargs: dict[str, str] | None):
+    def __init__(
+        self,
+        input_source: str | Engine | Session | Connection = None,
+        schema=None,
+        table_name=None,
+        **kwargs: dict[str, str] | None,
+    ):
         self._input_source = input_source
 
         self._reader = self._create_reader(input_source, schema=schema, table_name=table_name, **kwargs)
 
-    def dataframe(self):
+    def dataframe(self) -> pd.DataFrame:
         return self.data
 
     @property
-    def data(self):
+    def data(self) -> pd.DataFrame:
         return self._reader.dataframe
 
     @property

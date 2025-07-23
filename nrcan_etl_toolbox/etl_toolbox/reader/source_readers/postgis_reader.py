@@ -13,6 +13,18 @@ class PostGisTableDataReader(BaseDataReader):
         self._geometry_column_name = geometry_column_name
         super().__init__(input_source=input_source)
 
+    @property
+    def table_name(self):
+        return self._table_name
+
+    @property
+    def schema(self):
+        return self._schema
+
+    @property
+    def formatted_table_name(self):
+        return f"{self._schema}.{self._table_name}" if self._schema else self._table_name
+
     def _read_data(self):
         query = f"select * from {self._schema}.{self._table_name}"
         match self._input_source:
