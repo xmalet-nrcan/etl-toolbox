@@ -182,7 +182,7 @@ class AbstractDatabaseObjectsInterface:
             if data is not None:
                 if len(data) == 0:
                     return [self._create_element(dict_element, table_model, **kwargs)]
-                elif len(data) <= 1:
+                elif len(data) >= 1:
                     return data
 
                     # raise Exception(f"More than one {table_model.__name__} found with the same parameters")
