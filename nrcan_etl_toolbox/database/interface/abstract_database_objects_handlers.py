@@ -160,7 +160,7 @@ class AbstractDatabaseObjectsInterface:
                 session.rollback()
                 return None
             finally:
-                session.close()
+                session.commit()
             return data
 
     def _get_or_create_element(
