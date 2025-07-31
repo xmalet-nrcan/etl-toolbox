@@ -25,8 +25,8 @@ class ExcelReader(BaseDataReader):
         if self._original_file is not None:
             self._original_file.close()
         del self._dataframe
-
-    def get_sheet_names(self):
+    @property
+    def list_sheet_names(self):
         return list(self._original_file.sheet_names)
 
     def read_sheet(
@@ -58,7 +58,7 @@ class ExcelReader(BaseDataReader):
         :rtype: pandas.DataFrame
         :raises ValueError: If the specified sheet_name does not exist in the Excel file.
         """
-        if sheet_name not in self.get_sheet_names():
+        if sheet_name not in self.list_sheet_names:
             raise ValueError(f"Sheet {sheet_name} not found in Excel file.")
         self.sheet_name = sheet_name
         if set_internal_dataframe:
