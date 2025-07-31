@@ -1,6 +1,6 @@
 [project]
 name = "nrcan_etl_toolbox"
-version = "0.1.36"
+version = "0.1.37"
 description = "Package for logging and database interfacing using SQLAlchemy and SQLModels"
 authors = [
     { name = "Xavier Malet", email = "xavier.malet@nrcan-rncan.gc.ca" }
