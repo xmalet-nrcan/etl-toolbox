@@ -22,7 +22,8 @@ class ExcelReader(BaseDataReader):
         self.sheet_name = sheet_name
 
     def __del__(self):
-        self._original_file.close()
+        if self._original_file is not None:
+            self._original_file.close()
         del self._dataframe
 
     def get_sheet_names(self):
