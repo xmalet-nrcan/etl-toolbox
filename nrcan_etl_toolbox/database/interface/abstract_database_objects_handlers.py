@@ -170,9 +170,7 @@ class AbstractDatabaseObjectsInterface:
             self.session.begin(nested=True)
             data = self._get_element_in_database(table_model=table_model, condition=condition, **kwargs)
             if data is not None and len(data) == 0:
-                data = self._get_element_to_be_inserted(
-                    dict_element=dict_element, table_model=table_model, **kwargs
-                )
+                data = self._get_element_to_be_inserted(dict_element=dict_element, table_model=table_model, **kwargs)
         except Exception as e:
             self.session.rollback()
             self.logger.warning(
