@@ -1,4 +1,5 @@
 import os
+import pathlib
 
 import pandas as pd
 from sqlalchemy import Connection, Engine
@@ -21,7 +22,7 @@ class ReaderFactory:
 
     def __init__(
         self,
-        input_source: str | Engine | Session | Connection = None,
+        input_source: str | Engine | Session | Connection | pathlib.Path = None,
         schema=None,
         table_name=None,
         **kwargs: dict[str, str] | None,

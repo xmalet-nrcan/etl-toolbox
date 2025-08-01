@@ -64,7 +64,7 @@ def test_excel_reader_initialization():
         assert reader.sheet_name is None
         assert reader.skipfooter == 0
         assert reader.skiprows == 0
-        assert isinstance(reader.get_sheet_names(), list)
+        assert isinstance(reader.list_sheet_names, list)
         del reader
 
     finally:
@@ -75,7 +75,7 @@ def test_excel_reader_get_sheet_names():
     temp_file = _create_temp_excel_file([{"A": [1]}, {"B": [2]}], [SHEET_1_NAME, SHEET_2_NAME])
     try:
         reader = ExcelReader(input_source=temp_file)
-        sheet_names = reader.get_sheet_names()
+        sheet_names = reader.list_sheet_names
         assert SHEET_1_NAME in sheet_names
         assert SHEET_2_NAME in sheet_names
         del reader
@@ -161,7 +161,7 @@ def test_excel_reader_read_sheet_change_internal_true():
         assert reader.dataframe.equals(pd.DataFrame(SHEET_DATA_1)), (
             "Internal dataframe should be updated when read_sheet is called with set_internal_dataframe=True."
         )
-        assert reader.get_sheet_names() == [SHEET_1_NAME, SHEET_2_NAME], (
+        assert reader.list_sheet_names == [SHEET_1_NAME, SHEET_2_NAME], (
             "Sheet names should not be updated when read_sheet is called with set_internal_dataframe=True."
         )
 
@@ -180,7 +180,7 @@ def test_excel_reader_read_sheet_change_internal_true():
         assert reader.dataframe.equals(pd.DataFrame(SHEET_DATA_2)), (
             "Internal dataframe should be updated when read_sheet is called with set_internal_dataframe=True."
         )
-        assert reader.get_sheet_names() == [SHEET_1_NAME, SHEET_2_NAME], (
+        assert reader.list_sheet_names == [SHEET_1_NAME, SHEET_2_NAME], (
             "Sheet names should not be updated when read_sheet is called with set_internal_dataframe=True."
         )
 
@@ -191,7 +191,7 @@ def test_excel_reader_read_sheet_change_internal_true():
         assert reader.dataframe.equals(pd.DataFrame(SHEET_DATA_1)), (
             f"Internal dataframe should the same as {SHEET_1_NAME}"
         )
-        assert reader.get_sheet_names() == [SHEET_1_NAME, SHEET_2_NAME], (
+        assert reader.list_sheet_names == [SHEET_1_NAME, SHEET_2_NAME], (
             "Sheet names should not be updated when read_sheet is called with set_internal_dataframe=True."
         )
 
@@ -228,7 +228,7 @@ def test_excel_reader_reset_internal_dataframe():
         assert reader.dataframe.equals(pd.DataFrame(SHEET_DATA_2)), (
             "Internal dataframe should be updated when reset_internal_dataframe is called with with_sheet_name=True."
         )
-        assert reader.get_sheet_names() == [SHEET_1_NAME, SHEET_2_NAME], (
+        assert reader.list_sheet_names == [SHEET_1_NAME, SHEET_2_NAME], (
             "Sheet names should not be updated when reset_internal_dataframe is called with with_sheet_name=True."
         )
 
