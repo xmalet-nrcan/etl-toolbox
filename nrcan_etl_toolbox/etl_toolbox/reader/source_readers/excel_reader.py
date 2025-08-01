@@ -25,6 +25,7 @@ class ExcelReader(BaseDataReader):
         if self._original_file is not None:
             self._original_file.close()
         del self._dataframe
+
     @property
     def list_sheet_names(self):
         return list(self._original_file.sheet_names)
