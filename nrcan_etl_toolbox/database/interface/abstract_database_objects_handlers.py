@@ -60,10 +60,10 @@ class AbstractDatabaseObjectsInterface:
     def _insert_object(self, db_object: Base) -> bool | None:
         with self.session as session:
             try:
-                session.begin(nested=True)
-                session.add(db_object)
-                session.commit()
-                return True
+                with session.begin(nested=True):
+                    session.add(db_object)
+                    session.commit()
+                    return True
             except IntegrityError as e:
                 session.rollback()
                 if isinstance(e.orig, UniqueViolation):
