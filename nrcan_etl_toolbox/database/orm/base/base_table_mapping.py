@@ -156,7 +156,7 @@ class Base(SQLModel):
         else:
             # Collect conditions dynamically
             for attr, value in filters.items():
-                if value is not None and hasattr(cls, attr):
+                if value is not None and hasattr(cls, attr) and not isinstance(value, Base):
                     # Add equality and "LIKE" conditions
                     column_attr = getattr(cls, attr)
 
