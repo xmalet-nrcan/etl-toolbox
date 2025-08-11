@@ -88,7 +88,7 @@ def test_excel_reader_read_sheet():
     temp_file = _create_temp_excel_file([{"A": [1, 2], "B": [3, 4]}], [SHEET_1_NAME])
     try:
         reader = ExcelReader(input_source=temp_file)
-        dataframe = reader.read_sheet(sheet_name=SHEET_1_NAME)
+        dataframe = reader.read_sheet(sheet_name=SHEET_1_NAME, cols_to_lowercase=False)
         assert isinstance(dataframe, pd.DataFrame)
         assert dataframe.shape == (2, 2)
         assert list(dataframe.columns) == ["A", "B"]
@@ -113,7 +113,7 @@ def test_excel_reader_set_internal_dataframe():
     temp_file = _create_temp_excel_file([{"A": [1, 2], "B": [3, 4]}], [SHEET_1_NAME])
     try:
         reader = ExcelReader(input_source=temp_file)
-        dataframe = reader.read_sheet(sheet_name=SHEET_1_NAME, set_internal_dataframe=True)
+        dataframe = reader.read_sheet(sheet_name=SHEET_1_NAME, set_internal_dataframe=True, cols_to_lowercase=False)
         assert isinstance(dataframe, pd.DataFrame)
         assert reader.dataframe.equals(dataframe)
         del reader
@@ -138,7 +138,7 @@ def test_excel_reader_read_sheet_change_internal_true():
         # assert df_sheet1.shape == (3, 2), "Sheet1 DataFrame should have 3 rows and 2 columns."
         # assert list(df_sheet1.columns) == list(SHEET_DATA_1.keys()), "Sheet1 column names should match."
 
-        df_sheet1 = reader.read_sheet(sheet_name=SHEET_1_NAME)
+        df_sheet1 = reader.read_sheet(sheet_name=SHEET_1_NAME, cols_to_lowercase=False)
         assert isinstance(df_sheet1, pd.DataFrame), "Sheet1 data should be returned as a DataFrame."
         assert df_sheet1.shape == (3, 2), "Sheet1 DataFrame should have 3 rows and 2 columns."
         assert list(df_sheet1.columns) == list(SHEET_DATA_1.keys()), "Sheet1 column names should match."
@@ -157,7 +157,7 @@ def test_excel_reader_read_sheet_change_internal_true():
         )
 
         # Test set_internal_dataframe=True for SHEET_1
-        reader.read_sheet(sheet_name=SHEET_1_NAME, set_internal_dataframe=True)
+        reader.read_sheet(sheet_name=SHEET_1_NAME, set_internal_dataframe=True, cols_to_lowercase=False)
         assert reader.dataframe.equals(pd.DataFrame(SHEET_DATA_1)), (
             "Internal dataframe should be updated when read_sheet is called with set_internal_dataframe=True."
         )
@@ -166,7 +166,7 @@ def test_excel_reader_read_sheet_change_internal_true():
         )
 
         # 2) Test reading Sheet2
-        df_sheet2 = reader.read_sheet(sheet_name=SHEET_2_NAME)
+        df_sheet2 = reader.read_sheet(sheet_name=SHEET_2_NAME, cols_to_lowercase=False)
         assert isinstance(df_sheet2, pd.DataFrame), "Sheet2 data should be returned as a DataFrame."
         assert df_sheet2.shape == (3, 2), "Sheet2 DataFrame should have 3 rows and 2 columns."
         assert list(df_sheet2.columns) == list(SHEET_DATA_2.keys()), "Sheet2 column names should match."
@@ -176,7 +176,7 @@ def test_excel_reader_read_sheet_change_internal_true():
         assert df_sheet2[SHEET_2_COL_2_NAME].tolist() == SHEET_2_COL_2_DATA, "Sheet2 'B' values are not as expected."
 
         # Test set_internal_dataframe=True for SHEET_2
-        reader.read_sheet(sheet_name=SHEET_2_NAME, set_internal_dataframe=True)
+        reader.read_sheet(sheet_name=SHEET_2_NAME, set_internal_dataframe=True, cols_to_lowercase=False)
         assert reader.dataframe.equals(pd.DataFrame(SHEET_DATA_2)), (
             "Internal dataframe should be updated when read_sheet is called with set_internal_dataframe=True."
         )
@@ -185,9 +185,9 @@ def test_excel_reader_read_sheet_change_internal_true():
         )
 
         # Test set and reset internal dataframe
-        reader.read_sheet(sheet_name=SHEET_2_NAME, set_internal_dataframe=True)
-        reader.read_sheet(sheet_name=SHEET_1_NAME, set_internal_dataframe=True)
-        reader.read_sheet(sheet_name=SHEET_2_NAME, set_internal_dataframe=False)
+        reader.read_sheet(sheet_name=SHEET_2_NAME, set_internal_dataframe=True, cols_to_lowercase=False)
+        reader.read_sheet(sheet_name=SHEET_1_NAME, set_internal_dataframe=True, cols_to_lowercase=False)
+        reader.read_sheet(sheet_name=SHEET_2_NAME, set_internal_dataframe=False, cols_to_lowercase=False)
         assert reader.dataframe.equals(pd.DataFrame(SHEET_DATA_1)), (
             f"Internal dataframe should the same as {SHEET_1_NAME}"
         )

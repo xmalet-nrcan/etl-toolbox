@@ -25,4 +25,5 @@ class BaseDataReader:
 
     @staticmethod
     def _to_lowercase_columns(dataframe: pd.DataFrame = None):
-        return dataframe.columns.str.lower().str.replace(" ", "_", regex=True)
+        dataframe.columns =  dataframe.columns.str.lower().str.replace(" ", "_", regex=True)
+        return dataframe
