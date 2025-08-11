@@ -129,3 +129,10 @@ jobs:
           draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publier sur PyPI
+        uses: pypa/gh-action-pypi-publish@v1.8.14
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_TOKEN }}
+          packages_dir: dist/
