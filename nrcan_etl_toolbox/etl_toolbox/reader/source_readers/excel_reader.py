@@ -90,10 +90,21 @@ class ExcelReader(BaseDataReader):
         else:
             self._read_data(skiprows=self.skiprows, skipfooter=self.skipfooter)
 
-    def _read_data(self, sheet_name=None, skiprows=0, skipfooter=0, **kwargs):
-        self._dataframe = pd.read_excel(
+    def _read_data(self, sheet_name=None, skiprows=0, skipfooter=0, cols_to_lowercase=True, **kwargs):
+        self._dataframe = self.__get_pandas_df_from_excel_sheet(
+            sheet_name, skiprows, skipfooter, cols_to_lowercase, **kwargs
+        )
+
+    def __get_pandas_df_from_excel_sheet(
+        self, sheet_name=None, skiprows=0, skipfooter=0, cols_to_lowercase=True, **kwargs
+    ):
+        df = pd.read_excel(
             self._original_file, sheet_name=sheet_name, skiprows=skiprows, skipfooter=skipfooter, **kwargs
         )
+        if cols_to_lowercase:
+            return self._to_lowercase_columns(df)
+        else:
+            return df
 
     @property
     def columns(self) -> list:

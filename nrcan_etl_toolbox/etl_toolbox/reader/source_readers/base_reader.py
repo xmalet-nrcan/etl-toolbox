@@ -22,3 +22,7 @@ class BaseDataReader:
     @property
     def columns(self) -> list:
         return self.dataframe.columns.tolist()
+
+    @staticmethod
+    def _to_lowercase_columns(dataframe: pd.DataFrame = None):
+        return dataframe.columns.str.lower().str.replace(" ", "_", regex=True)
