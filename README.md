@@ -1,3 +1,4 @@
+from nrcan_etl_toolbox.etl_toolbox.reader.source_readers import ExcelReader
 
 # NRCAN ETL Toolbox
 
@@ -47,7 +48,7 @@ pip install dist/nrcan_etl_toolbox-*.whl
 ```python
 from nrcan_etl_toolbox.etl_logging import CustomLogger
 
-logger = CustomLogger(level='INFO'
+logger = CustomLogger(name="Test Logger", level='INFO'
                       ,logger_type='verbose',
                       logger_file_name='test_logger.log')
 
@@ -61,6 +62,7 @@ logger.error("Processing error", exc_info=True)
 
 ```python
 from nrcan_etl_toolbox.etl_toolbox.reader import ReaderFactory
+from nrcan_etl_toolbox.etl_toolbox.reader.source_readers import ExcelReader
 
 # Creating a CSV reader
 csv_reader = ReaderFactory(input_source="data.csv")
@@ -69,6 +71,24 @@ data = csv_reader.data
 # Creating a Shapefile reader
 shp_reader = ReaderFactory(input_source="data.shp")
 geo_data = shp_reader.data
+
+# Creating a PostGIS reader
+postgis_reader = ReaderFactory(input_source="postgresql://user:password@host:port/database", # Use the connection string for your database
+                               table_name="table_name",
+                               schema="schema_name")
+geo_data = postgis_reader.data
+
+# Creating an Excel reader
+reader = ReaderFactory(input_source="data.xlsx")
+# Get the Reader object
+excel_reader : ExcelReader = reader.reader
+# If excel file contains multiple sheets, 
+# data will be a dictionary with sheet names as keys and dataframes as values
+data = excel_reader.dataframe 
+# data = {'Sheet1': df1, 'Sheet2': df2}
+# To read a specific sheet, use the sheet_name parameter
+data = excel_reader.read_sheet('Sheet1')
+# data = df1
 ```
 
 ### Database Interface
