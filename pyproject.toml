@@ -1,5 +1,5 @@
 [project]
-name = "etl-toolbox"
+name = "nrcan-etl-toolbox"
 
 version = "0.1.48"
 
