@@ -33,8 +33,13 @@ class ExcelReader(BaseDataReader):
         return list(self._original_file.sheet_names)
 
     def read_sheet(
-            self, sheet_name, set_internal_dataframe: bool = False, skiprows=0, skipfooter=0, cols_to_lowercase=False,
-            **kwargs
+        self,
+        sheet_name,
+        set_internal_dataframe: bool = False,
+        skiprows=0,
+        skipfooter=0,
+        cols_to_lowercase=False,
+        **kwargs,
     ) -> pd.DataFrame:
         """
         Reads a specified sheet from an Excel file and returns its contents as a pandas DataFrame.
@@ -66,13 +71,22 @@ class ExcelReader(BaseDataReader):
             raise ValueError(f"Sheet {sheet_name} not found in Excel file.")
         self.sheet_name = sheet_name
         if set_internal_dataframe:
-            self._read_data(sheet_name=sheet_name, skiprows=skiprows, skipfooter=skipfooter,
-                            cols_to_lowercase=cols_to_lowercase, **kwargs)
+            self._read_data(
+                sheet_name=sheet_name,
+                skiprows=skiprows,
+                skipfooter=skipfooter,
+                cols_to_lowercase=cols_to_lowercase,
+                **kwargs,
+            )
             return self._dataframe
         else:
-            return self.__get_pandas_df_from_excel_sheet(sheet_name=sheet_name, skiprows=skiprows,
-                                                         skipfooter=skipfooter, cols_to_lowercase=cols_to_lowercase,
-                                                         **kwargs)
+            return self.__get_pandas_df_from_excel_sheet(
+                sheet_name=sheet_name,
+                skiprows=skiprows,
+                skipfooter=skipfooter,
+                cols_to_lowercase=cols_to_lowercase,
+                **kwargs,
+            )
 
     def reset_internal_dataframe(self, with_sheet_name: bool = False):
         """
@@ -98,7 +112,7 @@ class ExcelReader(BaseDataReader):
         )
 
     def __get_pandas_df_from_excel_sheet(
-            self, sheet_name=None, skiprows=0, skipfooter=0, cols_to_lowercase=False, **kwargs
+        self, sheet_name=None, skiprows=0, skipfooter=0, cols_to_lowercase=False, **kwargs
     ):
         df = pd.read_excel(
             self._original_file, sheet_name=sheet_name, skiprows=skiprows, skipfooter=skipfooter, **kwargs
