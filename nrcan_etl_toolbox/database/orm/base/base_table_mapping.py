@@ -43,6 +43,14 @@ class Base(SQLModel):
         vals = [getattr(self, i) for i in class_cols if not isinstance(getattr(self, i), dict)]
         return hash(tuple(vals))
 
+    @classmethod
+    def primary_key_is_completed(cls) -> bool:
+        primary_key_cols = [col.name for col in cls.__table__.primary_key.columns]
+        for col in primary_key_cols:
+            if getattr(cls, col) is None:
+                return False
+        return True
+
     @property
     def columns(self):
         return self._get_columns()
