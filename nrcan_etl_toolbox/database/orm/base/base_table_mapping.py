@@ -46,10 +46,7 @@ class Base(SQLModel):
     @classmethod
     def primary_key_is_completed(cls) -> bool:
         primary_key_cols = [col.name for col in cls.__table__.primary_key.columns]
-        for col in primary_key_cols:
-            if getattr(cls, col) is None:
-                return False
-        return True
+        return all(getattr(cls, col) is not None for col in primary_key_cols)
 
     @property
     def columns(self):
