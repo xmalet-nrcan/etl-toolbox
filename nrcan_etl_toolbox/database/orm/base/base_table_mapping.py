@@ -171,13 +171,13 @@ class Base(SQLModel):
                             case list():
                                 for v in value:
                                     cls.add_value_to_sub_query(
-                                        column_attr, sub_filters, v, add_is_like_to_query=add_is_like_to_string_query
+                                        column_attr, sub_filters, v, add_is_like_to_query=add_is_like_to_query
                                     )
                             case BaseGeometry():
                                 pass
                             case _:
                                 cls.add_value_to_sub_query(
-                                    column_attr, sub_filters, value, add_is_like_to_query=add_is_like_to_string_query
+                                    column_attr, sub_filters, value, add_is_like_to_query=add_is_like_to_query
                                 )
 
             if FONCTION_FILTER in filters:
