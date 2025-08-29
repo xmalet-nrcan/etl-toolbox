@@ -150,7 +150,7 @@ class Base(SQLModel):
         cls,
         session,
         condition="or",
-        add_is_like_to_string_query=True,
+        add_is_like_to_query=True,
         **filters,
     ) -> Query | None:
         query = session.query(cls)
