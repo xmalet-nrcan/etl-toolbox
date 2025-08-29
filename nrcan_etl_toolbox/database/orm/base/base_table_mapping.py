@@ -150,6 +150,7 @@ class Base(SQLModel):
         cls,
         session,
         condition="or",
+        add_is_like_to_string_query=True,
         **filters,
     ) -> Query | None:
         query = session.query(cls)
@@ -169,11 +170,15 @@ class Base(SQLModel):
                         match value:
                             case list():
                                 for v in value:
-                                    cls.add_value_to_sub_query(column_attr, sub_filters, v)
+                                    cls.add_value_to_sub_query(
+                                        column_attr, sub_filters, v, add_is_like_to_query=add_is_like_to_string_query
+                                    )
                             case BaseGeometry():
                                 pass
                             case _:
-                                cls.add_value_to_sub_query(column_attr, sub_filters, value)
+                                cls.add_value_to_sub_query(
+                                    column_attr, sub_filters, value, add_is_like_to_query=add_is_like_to_string_query
+                                )
 
             if FONCTION_FILTER in filters:
                 sub_filters.extend(filters[FONCTION_FILTER])
@@ -210,24 +215,36 @@ class Base(SQLModel):
         cls: type[T],
         session,
         condition="or",
+        add_is_like_to_query=True,
         funcs_conditions="and",
         **filters,
     ) -> list[T] | None:
         try:
             return cls.get_query_for_object(
-                session=session, condition=condition, funcs_conditions=funcs_conditions, **filters
+                session=session,
+                condition=condition,
+                funcs_conditions=funcs_conditions,
+                add_is_like_to_query=add_is_like_to_query,
+                **filters,
             ).all()
         except AttributeError as e:
             logger.error(e)
             return None
 
     @classmethod
-    def add_value_to_sub_query(cls, column_attr, sub_filters, value):
+    def add_value_to_sub_query(cls, column_attr, sub_filters, value, add_is_like_to_query=True):
+        """
+        Add equality and "LIKE" conditions to a sub-query.
+        :param column_attr:
+        :param sub_filters:
+        :param value:
+        :return:
+        """
         if isinstance(column_attr.property, sqlalchemy.orm.RelationshipProperty):
             sub_filters.append(value == column_attr)
         else:
             sub_filters.append(column_attr == value)
-            if isinstance(column_attr.property.columns[0].type, (String, Text, AutoString)):
+            if isinstance(column_attr.property.columns[0].type, (String, Text, AutoString)) and add_is_like_to_query:
                 sub_filters.append(cls._is_like(column_attr, value))
 
     @staticmethod
@@ -256,6 +273,16 @@ class Base(SQLModel):
 
     @classmethod
     def _is_like(cls, col: InstrumentedAttribute, parameter: str = None):
+        """
+        Constructs a SQLAlchemy 'like' condition for a given column and parameter.
+
+        :param col: Database column as `InstrumentedAttribute` to be checked.
+        :param parameter: Pattern or string for checking the 'like' condition. Can
+                          include '%' as a wildcard or be a normal string. Default is None.
+        :return: Constructed SQLAlchemy like condition or None if the parameter is not
+                 appropriate for a 'like' operation.
+        :rtype: ClauseElement | None
+        """
         match parameter:
             case "%":
                 return None
