@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import sys
 from collections.abc import Callable
 from typing import Any, TypeVar
 
@@ -8,6 +10,7 @@ from geoalchemy2 import WKBElement
 from shapely.geometry.base import BaseGeometry
 from sqlalchemy import String, Text, func, or_, orm
 from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import ColumnProperty, InstrumentedAttribute, Query
 from sqlmodel import AutoString, SQLModel
@@ -24,23 +27,37 @@ logger = CustomLogger("SQLModels")
 T = TypeVar("T", bound="Base")
 
 
+sys.stdout.reconfigure(encoding="utf-8")
+sys.stderr.reconfigure(encoding="utf-8")
+
+
 class Base(SQLModel):
     __abstract__ = True
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, type(self)):
             return False
-        else:
-            self_gen_cols = self._get_columns_if_not_auto_gen()
-            other_gen_cols = other._get_columns_if_not_auto_gen()
-            self_dict = {k: v for k, v in self.__dict__.items() if k in self_gen_cols}
-            other_dict = {k: v for k, v in other.__dict__.items() if k in other_gen_cols}
-
-            return self_dict == other_dict
+        cols = self._get_columns_if_not_auto_gen()
+        for col in cols:
+            v1 = getattr(self, col)
+            v2 = getattr(other, col)
+            if isinstance(v1, dict) and isinstance(v2, dict):
+                if json.dumps(v1, sort_keys=True) != json.dumps(v2, sort_keys=True):
+                    return False
+            else:
+                if v1 != v2:
+                    return False
+        return True
 
     def __hash__(self):
-        class_cols = self._get_columns_if_not_auto_gen()
-        vals = [getattr(self, i) for i in class_cols if not isinstance(getattr(self, i), dict)]
+        cols = self._get_columns_if_not_auto_gen()
+        vals = []
+        for col in cols:
+            v = getattr(self, col)
+            if isinstance(v, dict):
+                vals.append(json.dumps(v, sort_keys=True))
+            else:
+                vals.append(v)
         return hash(tuple(vals))
 
     @classmethod
@@ -76,7 +93,6 @@ class Base(SQLModel):
 
     def _get_columns_if_not_auto_gen(self):
         out_cols = []
-
         for cols in self._get_columns():
             if not self._is_value_null(cols) and not self.is_identity_column(cols):
                 if self._is_default_callable(cols):
@@ -84,7 +100,6 @@ class Base(SQLModel):
                         out_cols.append(cols)
                 else:
                     out_cols.append(cols)
-
         return out_cols
 
     def _is_default_value_null(self, column_name: str) -> bool:
@@ -94,27 +109,19 @@ class Base(SQLModel):
         return False
 
     def _is_value_null(self, column_name: str) -> bool:
-        if hasattr(self, column_name):
-            return getattr(self, column_name) is None
-        else:
-            return False
+        return getattr(self, column_name, None) is None
 
     def _is_value_equal_default_gen_col(self, column_name: str) -> bool:
         if hasattr(self, column_name):
             col_attribute = getattr(type(self), column_name).property.columns[0]
             if not self._is_default_value_null(column_name):
                 col_value = getattr(self, column_name)
-                is_callable = self._is_default_callable(column_name)
-                if not is_callable:
+                if not self._is_default_callable(column_name):
                     return col_value == col_attribute.default.arg
-                if is_callable:
-                    fct = col_attribute.default.arg
-                    try:
-                        return fct() == col_value
-                    except TypeError:
-                        return fct(None) == col_value
-                else:
-                    return False
+                try:
+                    return col_attribute.default.arg() == col_value
+                except TypeError:
+                    return col_attribute.default.arg(None) == col_value
         return False
 
     def _is_default_callable(self, column_name: str):
@@ -124,15 +131,7 @@ class Base(SQLModel):
 
     @classmethod
     def is_identity_column(cls, column_name: str) -> bool:
-        """
-        Checks if a specified column in an SQLAlchemy model is of type Identity.
-
-        Parameters:
-            column_name (str): The name of the column.
-
-        Returns:
-            bool: True if the column is an Identity column, False otherwise.
-        """
+        """Check if a column is an identity/auto-increment column."""
         if column_name in cls.model_fields:
             column = getattr(cls, column_name)
             try:
@@ -155,60 +154,58 @@ class Base(SQLModel):
     ) -> Query | None:
         query = session.query(cls)
         sub_filters = []
+
         if condition not in ["or", "and", "all"]:
             raise ValueError("condition must be 'or', 'and' or 'all'")
         if condition == "all":
             return query
-        else:
-            # Collect conditions dynamically
-            for attr, value in filters.items():
-                if value is not None and hasattr(cls, attr) and not isinstance(value, Base):
-                    # Add equality and "LIKE" conditions
-                    column_attr = getattr(cls, attr)
 
-                    if isinstance(column_attr, (InstrumentedAttribute, ColumnProperty)):
-                        match value:
-                            case list():
-                                for v in value:
-                                    cls.add_value_to_sub_query(
-                                        column_attr, sub_filters, v, add_is_like_to_query=add_is_like_to_query
-                                    )
-                            case BaseGeometry():
-                                pass
-                            case _:
-                                cls.add_value_to_sub_query(
-                                    column_attr, sub_filters, value, add_is_like_to_query=add_is_like_to_query
-                                )
+        for attr, value in filters.items():
+            if value is not None and hasattr(cls, attr) and not isinstance(value, Base):
+                column_attr = getattr(cls, attr)
+                if isinstance(column_attr, (InstrumentedAttribute, ColumnProperty)):
+                    match value:
+                        case list():
+                            for v in value:
+                                cls.add_value_to_sub_query(column_attr, sub_filters, v, add_is_like_to_query)
+                        case BaseGeometry():
+                            pass
+                        case _:
+                            cls.add_value_to_sub_query(column_attr, sub_filters, value, add_is_like_to_query)
 
-            if FONCTION_FILTER in filters:
-                sub_filters.extend(filters[FONCTION_FILTER])
+        if FONCTION_FILTER in filters:
+            sub_filters.extend(filters[FONCTION_FILTER])
 
-            # Apply OR logic if there are conditions
-            if sub_filters:
-                if condition == "or":
-                    query = query.filter(or_(*sub_filters))
-                if condition == "and":
-                    query = query.filter(*sub_filters)
+        if sub_filters:
+            if condition == "or":
+                query = query.filter(or_(*sub_filters))
+            if condition == "and":
+                query = query.filter(*sub_filters)
 
-            if query.whereclause is None:
-                raise ValueError("No conditions provided with parameter 'condition' = 'or' or 'and'")
-            else:
-                # add `order by`, `limit` and `offset` to query if provided in filters
-                if ORDER_BY in filters:
-                    query = query.order_by(filters[ORDER_BY])
-                if LIMIT in filters and isinstance(filters[LIMIT], int):
-                    query = query.limit(filters[LIMIT])
-                if OFFSET in filters and isinstance(filters[OFFSET], int):
-                    query = query.offset(filters[OFFSET])
-                try:
-                    compiled_query = query.statement.compile(
-                        dialect=postgresql.dialect(),
-                        compile_kwargs={"literal_binds": True},
-                    )
-                except Exception:
-                    compiled_query = query.statement.compile(dialect=postgresql.dialect())
+        if query.whereclause is None:
+            raise ValueError("No conditions provided with parameter 'condition' = 'or' or 'and'")
+
+        if ORDER_BY in filters:
+            query = query.order_by(filters[ORDER_BY])
+        if LIMIT in filters and isinstance(filters[LIMIT], int):
+            query = query.limit(filters[LIMIT])
+        if OFFSET in filters and isinstance(filters[OFFSET], int):
+            query = query.offset(filters[OFFSET])
+
+        try:
+            compiled_query = query.statement.compile(
+                dialect=postgresql.dialect(),
+                compile_kwargs={"literal_binds": True},
+            )
+        except sqlalchemy.exc.CompileError:
+            compiled_query = query.statement.compile(dialect=postgresql.dialect())
+        finally:
+            try:
                 logger.debug(f"{compiled_query}")
-                return query
+            except Exception:
+                logger.debug(f"{query}")
+
+        return query
 
     @classmethod
     def query_object(
@@ -233,56 +230,32 @@ class Base(SQLModel):
 
     @classmethod
     def add_value_to_sub_query(cls, column_attr, sub_filters, value, add_is_like_to_query=True):
-        """
-        Add equality and "LIKE" conditions to a sub-query.
-        :param column_attr:
-        :param sub_filters:
-        :param value:
-        :return:
-        """
-        if isinstance(column_attr.property, sqlalchemy.orm.RelationshipProperty):
+        col_type = column_attr.property.columns[0].type
+
+        if isinstance(col_type, JSONB) and isinstance(value, dict):
+            pass
+        elif isinstance(column_attr.property, sqlalchemy.orm.RelationshipProperty):
             sub_filters.append(value == column_attr)
         else:
             sub_filters.append(column_attr == value)
-            if isinstance(column_attr.property.columns[0].type, (String, Text, AutoString)) and add_is_like_to_query:
+            # Ajout LIKE seulement si type textuel
+            if isinstance(col_type, (String, Text, AutoString)) and add_is_like_to_query:
                 sub_filters.append(cls._is_like(column_attr, value))
 
     @staticmethod
     def remove_accents_characters_from_string(input_string: str) -> str:
-        """
-        Prepares a string for SQL LIKE queries by replacing accented characters with underscores (_).
-
-        Parameters:
-            input_string (str): The string to prepare.
-
-        Returns:
-        str: The prepared string with accented characters replaced by underscores.
-        """
+        """Replace accented chars by underscores for LIKE queries."""
         if isinstance(input_string, list):
             input_string = "".join(input_string)
-
         return "".join("_" if ord(c) > 127 else c for c in input_string)
 
     @classmethod
     def _formatted_parameter(cls, parameter: str) -> str:
-        """Format parameter for SQL LIKE query."""
         parameter_norm = cls.remove_accents_characters_from_string(parameter)
-        if parameter_norm == "%":
-            return "%"
-        return f"%{parameter_norm.lower()}%"
+        return "%" if parameter_norm == "%" else f"%{parameter_norm.lower()}%"
 
     @classmethod
     def _is_like(cls, col: InstrumentedAttribute, parameter: str = None):
-        """
-        Constructs a SQLAlchemy 'like' condition for a given column and parameter.
-
-        :param col: Database column as `InstrumentedAttribute` to be checked.
-        :param parameter: Pattern or string for checking the 'like' condition. Can
-                          include '%' as a wildcard or be a normal string. Default is None.
-        :return: Constructed SQLAlchemy like condition or None if the parameter is not
-                 appropriate for a 'like' operation.
-        :rtype: ClauseElement | None
-        """
         match parameter:
             case "%":
                 return None
@@ -352,42 +325,9 @@ class Base(SQLModel):
         """
         return {name: cls.get_default_value_from_column(name) for name in column_names}
 
-    @classmethod
-    def get_default_value_from_column_old(cls, column_name):
-        """
-        Extracts the default value (Python-side or server-side) for a specified column in an SQLAlchemy model.
-
-        Args:
-            orm_class: The SQLAlchemy ORM class.
-            column_name: The name of the column.
-
-        Returns:
-            str: The default value or server default value, or None if not defined.
-        """
-        if hasattr(cls, column_name):
-            column = getattr(cls, column_name)
-            # Check for Python-side default (default=...)
-            if column.default is not None:
-                arg = column.default.arg
-                if callable(arg):  # Handle callable defaults
-                    try:
-                        return arg()  # Try calling without argument
-                    except TypeError:
-                        return arg(None)  # In case of TypeError, try calling with None
-
-                return arg  # For non-callable defaults
-
-            # Check for server-side default (server_default=...)
-            if column.server_default is not None:
-                return str(column.server_default.arg)  # Return the SQL expression as a string
-
-            return None
-
 
 @compiles(WKBElement, "postgresql")
 def compile_wkb(element, compiler, **kw):
-    # TODO : replace with logging debug
-    # print("COMPILE_WKB")
-    wkt = element.desc  # à vérifier selon votre version/usage
-    srid = element.srid if hasattr(element, "srid") else 4326  # valeur par défaut si nécessaire
+    wkt = element.desc
+    srid = getattr(element, "srid", 4326)
     return f"ST_GeomFromText('{wkt}', {srid})"
