@@ -1,20 +1,21 @@
 from __future__ import annotations
 
+import json
+import sys
 from collections.abc import Callable
 from typing import Any, TypeVar
-import json
 
 import sqlalchemy.schema
 from geoalchemy2 import WKBElement
-from nrcan_etl_toolbox.etl_logging import CustomLogger
 from shapely.geometry.base import BaseGeometry
 from sqlalchemy import String, Text, func, or_, orm
-from sqlalchemy import cast
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import ColumnProperty, InstrumentedAttribute, Query
 from sqlmodel import AutoString, SQLModel
+
+from nrcan_etl_toolbox.etl_logging import CustomLogger
 
 FONCTION_FILTER = "funcs"
 ORDER_BY = "order_by"
@@ -25,9 +26,10 @@ logger = CustomLogger("SQLModels")
 
 T = TypeVar("T", bound="Base")
 
-import sys
-sys.stdout.reconfigure(encoding='utf-8')
-sys.stderr.reconfigure(encoding='utf-8')
+
+sys.stdout.reconfigure(encoding="utf-8")
+sys.stderr.reconfigure(encoding="utf-8")
+
 
 class Base(SQLModel):
     __abstract__ = True
@@ -80,7 +82,7 @@ class Base(SQLModel):
         relations = []
         for attr_name, attr_value in vars(cls).items():
             if isinstance(attr_value, InstrumentedAttribute) and isinstance(
-                    attr_value.property, orm.RelationshipProperty
+                attr_value.property, orm.RelationshipProperty
             ):
                 relations.append(attr_name)
         return relations
@@ -144,11 +146,11 @@ class Base(SQLModel):
 
     @classmethod
     def get_query_for_object(
-            cls,
-            session,
-            condition="or",
-            add_is_like_to_query=True,
-            **filters,
+        cls,
+        session,
+        condition="or",
+        add_is_like_to_query=True,
+        **filters,
     ) -> Query | None:
         query = session.query(cls)
         sub_filters = []
@@ -201,18 +203,18 @@ class Base(SQLModel):
             try:
                 logger.debug(f"{compiled_query}")
             except Exception:
-                pass
+                logger.debug(f"{query}")
 
         return query
 
     @classmethod
     def query_object(
-            cls: type[T],
-            session,
-            condition="or",
-            add_is_like_to_query=True,
-            funcs_conditions="and",
-            **filters,
+        cls: type[T],
+        session,
+        condition="or",
+        add_is_like_to_query=True,
+        funcs_conditions="and",
+        **filters,
     ) -> list[T] | None:
         try:
             return cls.get_query_for_object(

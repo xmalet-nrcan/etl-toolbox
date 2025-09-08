@@ -1,24 +1,16 @@
-from typing import TypeVar, Type
-
-from sqlalchemy.orm import Session
-from sqlmodel import SQLModel
-from typing import TypeVar, Type
-
-from sqlalchemy.orm import Session
-from sqlmodel import SQLModel
-
 from contextlib import contextmanager
 from typing import Optional, TypeVar
 
 import sqlalchemy
 from sqlalchemy import create_engine, func
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import InstrumentedAttribute
+from sqlalchemy.orm import InstrumentedAttribute, Session
+from sqlmodel import SQLModel
 
 from nrcan_etl_toolbox.database.orm import FONCTION_FILTER, LIMIT, ORDER_BY
 from nrcan_etl_toolbox.etl_logging import CustomLogger
 
-T = TypeVar("T", bound="Base")
+T = TypeVar("T", bound="Base")  # noqa: F821
 
 
 def db_safe(func):
@@ -59,9 +51,7 @@ class AbstractDatabaseObjectsInterface:
     # --------------------
     @contextmanager
     def get_session(self) -> Session:
-        session = Session(self.engine,
-                          expire_on_commit=False,
-                          autoflush=True)
+        session = Session(self.engine, expire_on_commit=False, autoflush=True)
         try:
             yield session
             session.commit()
@@ -79,11 +69,12 @@ class AbstractDatabaseObjectsInterface:
             else:
                 merged_kwargs[k] = v
         return merged_kwargs
+
     # --------------------
     # CREATE (insert immédiat)
     # --------------------
     @db_safe
-    def _create_element(self, table_model: Type[T], **kwargs) -> Optional[T]:
+    def _create_element(self, table_model: type[T], **kwargs) -> Optional[T]:
         """
         Crée et insère immédiatement un nouvel élément en base.
         Si un doublon existe déjà (contrainte unique), on retourne l'objet existant.
@@ -91,10 +82,7 @@ class AbstractDatabaseObjectsInterface:
         with self.get_session() as session:
             merged_kwargs = self._get_merged_kwargs(session, **kwargs)
 
-            t = table_model(**{
-                k: v for k, v in merged_kwargs.items()
-                if not table_model.is_identity_column(k)
-            })
+            t = table_model(**{k: v for k, v in merged_kwargs.items() if not table_model.is_identity_column(k)})
             try:
                 session.add(t)
                 session.flush()  # force l'INSERT
@@ -103,7 +91,8 @@ class AbstractDatabaseObjectsInterface:
                 self.logger.debug(f"Inserted {type(t).__name__} with PK={t.__dict__.get('id')}")
                 return t
 
-            except IntegrityError:
+            except IntegrityError as e:
+                self.logger.error(f"IntegrityError: {e}")
                 session.rollback()
                 self.logger.debug(f"{type(t).__name__} already exists, fetching existing one.")
                 # récupérer l’existant via les colonnes uniques si dispo
@@ -122,12 +111,12 @@ class AbstractDatabaseObjectsInterface:
     # READ
     # --------------------
     @db_safe
-    def _get_element_in_database(self, table_model: Type[T], condition: str = "and", **kwargs) -> list[T]:
+    def _get_element_in_database(self, table_model: type[T], condition: str = "and", **kwargs) -> list[T]:
         """Récupère des éléments de la DB selon condition."""
         with self.get_session() as session:
             merged_kwargs = self._get_merged_kwargs(session, **kwargs)
             data = table_model.query_object(session=session, condition=condition, **merged_kwargs)
-            if not data:
+            if not data or len(data) == 0:
                 return None
 
             for obj in data:
@@ -137,10 +126,7 @@ class AbstractDatabaseObjectsInterface:
     # --------------------
     # GET OR CREATE
     # --------------------
-    def _get_or_create_element(self,
-                               table_model: Type[T],
-                               condition: str = "and",
-                               **kwargs) -> list[Optional[T]]:
+    def _get_or_create_element(self, table_model: type[T], condition: str = "and", **kwargs) -> list[Optional[T]]:
         """
         Cherche un élément en base, sinon le crée immédiatement.
         """
@@ -171,10 +157,10 @@ class AbstractDatabaseObjectsInterface:
     def _get_similarity_func_and_order_by_for_column(column, element, similarity_filter=0.3, result_limit=10) -> dict:
         similarity_funcs = []
         if isinstance(column, (InstrumentedAttribute, str)):
-            similarity_funcs.append(DatabaseRetriever._get_similarity_func(column, element))
+            similarity_funcs.append(AbstractDatabaseObjectsInterface._get_similarity_func(column, element))
         elif isinstance(column, list):
             for col in column:
-                similarity_funcs.append(DatabaseRetriever._get_similarity_func(col, element))
+                similarity_funcs.append(AbstractDatabaseObjectsInterface._get_similarity_func(col, element))
 
         if not similarity_funcs:
             return {FONCTION_FILTER: {}, ORDER_BY: None, LIMIT: result_limit}
