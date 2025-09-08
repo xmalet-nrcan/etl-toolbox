@@ -170,3 +170,23 @@ class AbstractDatabaseObjectsInterface:
             ORDER_BY: sqlalchemy.desc(similarity_funcs[0]),
             LIMIT: result_limit,
         }
+
+    @staticmethod
+    def _is_date_valid(date_string: str) -> bool:
+        """
+        Validates if a date string is in a valid date format.
+
+        Args:
+            date_string: The string to validate
+
+        Returns:
+            bool: True if the date is valid, False otherwise
+        """
+        if not isinstance(date_string, str):
+            return False
+        try:
+            # dateutil.parser can handle many date formats
+            date_parser.parse(date_string)
+            return True
+        except (ValueError, TypeError):
+            return False
