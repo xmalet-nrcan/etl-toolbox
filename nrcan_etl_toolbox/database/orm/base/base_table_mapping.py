@@ -264,6 +264,67 @@ class Base(SQLModel):
             case _:
                 return None
 
+    @classmethod
+    def get_default_value_from_column(cls, column_name) -> Any | None:
+        """
+        Returns the default value for a given SQLAlchemy column (Python-side or server-side).
+
+        Args:
+            column_name (str): The name of the column.
+
+        Returns:
+            Any or None: The default value, or None if no default is defined.
+        """
+        if not hasattr(cls, column_name):
+            return None
+
+        column = getattr(cls, column_name)
+
+        # Vérifie si l'attribut est une colonne SQLAlchemy
+        if not hasattr(column, "default") or not hasattr(column, "server_default"):
+            return None
+
+        match column.default, column.server_default:
+            case (default, _) if default is not None:
+                return cls._get_arg_default(default.arg)
+
+            case (_, server_default) if server_default is not None:
+                return str(cls._get_arg_default(server_default.arg))
+
+            case _:
+                return None
+
+    @staticmethod
+    def _get_arg_default(arg):
+        match arg:
+            case str():
+                return arg
+            case sqlalchemy.schema.Column():
+                return Base._get_arg_default(arg.default.arg)
+            case _ if callable(arg):
+                try:
+                    return arg()
+                except TypeError:
+                    try:
+                        return arg(None)
+                    except Exception:
+                        return None
+            case _:
+                return arg
+
+    @classmethod
+    def get_default_values_for_columns(cls, column_names: list[str]) -> dict:
+        """
+        Returns the default values (Python-side or server-side) for a list of SQLAlchemy column names.
+
+        Args:
+            column_names (list[str]): Names of the columns.
+
+        Returns:
+            dict: A dictionary {column_name: default_value_or_None}.
+        """
+        return {name: cls.get_default_value_from_column(name) for name in column_names}
+
 
 @compiles(WKBElement, "postgresql")
 def compile_wkb(element, compiler, **kw):
