@@ -9,6 +9,7 @@ from sqlmodel import SQLModel
 
 from nrcan_etl_toolbox.database.orm import FONCTION_FILTER, LIMIT, ORDER_BY
 from nrcan_etl_toolbox.etl_logging import CustomLogger
+from dateutil import parser as date_parser
 
 T = TypeVar("T", bound="Base")  # noqa: F821
 
