@@ -99,11 +99,11 @@ class AbstractDatabaseObjectsInterface:
                 # récupérer l’existant via les colonnes uniques si dispo
                 filter_kwargs = {
                     k: v
-                    for k, v in merged_kwargs.items()
+                    for k, v in kwargs.items()
                     if hasattr(table_model, "unique_keys") and k in table_model.unique_keys()
                 }
                 if not filter_kwargs:
-                    filter_kwargs = merged_kwargs  # fallback : utiliser tous les kwargs
+                    filter_kwargs = kwargs  # fallback : utiliser tous les kwargs
 
                 existing = self._get_element_in_database(table_model, **filter_kwargs)
                 return existing[0] if existing else None
