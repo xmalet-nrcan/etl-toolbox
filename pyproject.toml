@@ -1,7 +1,7 @@
 [project]
 name = "nrcan-etl-toolbox"
 
-version = "0.2.6"
+version = "0.2.7"
 
 description = "Package for logging and database interfacing using SQLAlchemy and SQLModels"
 authors = [
