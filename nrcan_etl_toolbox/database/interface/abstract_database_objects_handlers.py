@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from typing import Optional, TypeVar
 
 import sqlalchemy
-from sqlalchemy import create_engine, func
+from sqlalchemy import create_engine, func as sql_func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import InstrumentedAttribute, Session
 from sqlmodel import SQLModel
@@ -14,14 +14,14 @@ from dateutil import parser as date_parser
 T = TypeVar("T", bound="Base")  # noqa: F821
 
 
-def db_safe(func):
+def db_safe(in_func):
     """Décorateur pour logger les erreurs DB sans interrompre sans log clair."""
 
     def wrapper(self, *args, **kwargs):
         try:
-            return func(self, *args, **kwargs)
+            return in_func(self, *args, **kwargs)
         except Exception as e:
-            self.logger.error(f"[{func.__name__}] Unexpected error: {e}", exc_info=True)
+            self.logger.error(f"[{in_func.__name__}] Unexpected error: {e}", exc_info=True)
             raise
 
     return wrapper
@@ -152,7 +152,7 @@ class AbstractDatabaseObjectsInterface:
     @staticmethod
     def _get_similarity_func(in_col: str | InstrumentedAttribute, text_to_compare: str):
         """Return SQL similarity function for given column and text."""
-        return func.similarity(in_col, text_to_compare)
+        return sql_func.similarity(in_col, text_to_compare)
 
     @staticmethod
     def _get_similarity_func_and_order_by_for_column(column, element, similarity_filter=0.3, result_limit=10) -> dict:
