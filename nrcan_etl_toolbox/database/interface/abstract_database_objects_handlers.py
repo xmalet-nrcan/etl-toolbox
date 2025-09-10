@@ -119,8 +119,9 @@ class AbstractDatabaseObjectsInterface:
             data = table_model.query_object(session=session, condition=condition, **merged_kwargs)
             if not data or len(data) == 0:
                 return None
-
             for obj in data:
+                obj = session.merge(obj)
+                session.refresh(obj)
                 session.expunge(obj)
             return data
 
@@ -198,7 +199,6 @@ class AbstractDatabaseObjectsInterface:
             if elt and elt not in associate_to:
                 associate_to.append(elt)
                 self.logger.debug(f"Associated {elt} to {associate_to}")
-        with self.get_session() as session:
-            session.add(associate_to)
-            session.refresh(t)  # récupère les PK/valeurs générées
-            session.expunge(t)  # détache l'objet de la session
+                with self.get_session() as session:
+                    elt = session.merge(elt)
+                    session.expunge(elt)

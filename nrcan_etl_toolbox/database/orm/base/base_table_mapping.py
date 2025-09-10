@@ -217,13 +217,17 @@ class Base(SQLModel):
         **filters,
     ) -> list[T] | None:
         try:
-            return cls.get_query_for_object(
+            objects =  cls.get_query_for_object(
                 session=session,
                 condition=condition,
                 funcs_conditions=funcs_conditions,
                 add_is_like_to_query=add_is_like_to_query,
                 **filters,
             ).all()
+            for obj in objects:
+                session.refresh(obj)
+                session.expunge(obj)
+            return objects
         except AttributeError as e:
             logger.error(e)
             return None
