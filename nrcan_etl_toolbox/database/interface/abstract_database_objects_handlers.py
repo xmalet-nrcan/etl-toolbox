@@ -66,7 +66,10 @@ class AbstractDatabaseObjectsInterface:
         merged_kwargs = {}
         for k, v in kwargs.items():
             if isinstance(v, SQLModel):  # si c’est un objet ORM
-                merged_kwargs[k] = session.merge(v)  # rattacher à la session
+                try:
+                    merged_kwargs[k] = session.merge(v)  # rattacher à la session
+                except Exception:
+                    merged_kwargs[k] = v
             else:
                 merged_kwargs[k] = v
         return merged_kwargs
