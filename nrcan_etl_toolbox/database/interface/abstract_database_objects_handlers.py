@@ -191,3 +191,14 @@ class AbstractDatabaseObjectsInterface:
             return True
         except (ValueError, TypeError):
             return False
+
+    @db_safe
+    def _associate_elements(self, elements: list["Base"], associate_to: list["Base"]):
+        for elt in elements:
+            if elt and elt not in associate_to:
+                associate_to.append(elt)
+                self.logger.debug(f"Associated {elt} to {associate_to}")
+        with self.get_session() as session:
+            session.add(associate_to)
+            session.refresh(t)  # récupère les PK/valeurs générées
+            session.expunge(t)  # détache l'objet de la session
