@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from typing import Optional, TypeVar
+from typing import Optional, TypeVar, Any, Generator
 
 import sqlalchemy
 from sqlalchemy import create_engine, func as sql_func
@@ -28,7 +28,7 @@ def db_safe(in_func):
 
 
 class AbstractDatabaseObjectsInterface:
-    def __init__(self, database_url: str, logger_level="DEBUG"):
+    def __init__(self, database_url: str=None, engine:sqlalchemy.engine.Engine=None, logger_level="DEBUG"):
         """
         Interface de base pour gérer les objets de base de données.
 
@@ -36,7 +36,11 @@ class AbstractDatabaseObjectsInterface:
             database_url (str): URL de connexion à la base (SQLAlchemy style).
             logger_level (str): Niveau de logging (ex: "DEBUG", "INFO").
         """
-        self.engine = create_engine(database_url, echo=False, future=True)
+        assert database_url or engine, "You must provide either a database_url or an engine."
+        if engine:
+            self.engine = engine
+        elif database_url:
+            self.engine = create_engine(database_url, echo=False, future=True)
         self.logger = CustomLogger("database_objects_handler", logger_type="default")
 
         self.logger.setLevel(logger_level)
@@ -51,7 +55,7 @@ class AbstractDatabaseObjectsInterface:
     # Session manager
     # --------------------
     @contextmanager
-    def get_session(self) -> Session:
+    def get_session(self) -> Generator[Session]:
         session = Session(self.engine, expire_on_commit=False, autoflush=True)
         try:
             yield session
