@@ -217,7 +217,7 @@ class Base(SQLModel):
         **filters,
     ) -> list[T] | None:
         try:
-            objects =  cls.get_query_for_object(
+            objects = cls.get_query_for_object(
                 session=session,
                 condition=condition,
                 funcs_conditions=funcs_conditions,

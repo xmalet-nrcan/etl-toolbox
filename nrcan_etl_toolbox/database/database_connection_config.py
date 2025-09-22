@@ -10,7 +10,11 @@ class DatabaseConfig:
     port: int
     database: str
     user: str
-    _password: str = field(default=os.getenv("DB_PASSWORD", ""), repr=False, metadata={"description": "Database password, default from env var DB_PASSWORD"})
+    _password: str = field(
+        default=os.getenv("DB_PASSWORD", ""),
+        repr=False,
+        metadata={"description": "Database password, default from env var DB_PASSWORD"},
+    )
 
     def safe_url(self, show_user: bool = True, show_password: bool = False) -> str:
         """
@@ -27,19 +31,17 @@ class DatabaseConfig:
     def password(self):
         return self._password
 
-
     def get_sqlalchemy_engine(self, **kwargs) -> sqlalchemy.engine.Engine:
         """
         Build a SQLAlchemy Engine directly.
         kwargs are passed to sqlalchemy.create_engine (e.g. pool_size, echo).
         """
-        return sqlalchemy.create_engine(f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}", **kwargs)
-
+        return sqlalchemy.create_engine(
+            f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}", **kwargs
+        )
 
     def __str__(self):
         return f"DatabaseConfig(url : {self.safe_url(show_password=False, show_user=False)})"
 
-
     def __repr__(self):
         return self.__str__()
-

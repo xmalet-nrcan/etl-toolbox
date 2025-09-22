@@ -1,15 +1,17 @@
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Optional, TypeVar, Any, Generator
+from typing import Any, Optional, TypeVar
 
 import sqlalchemy
-from sqlalchemy import create_engine, func as sql_func
+from dateutil import parser as date_parser
+from sqlalchemy import create_engine
+from sqlalchemy import func as sql_func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import InstrumentedAttribute, Session
 from sqlmodel import SQLModel
 
 from nrcan_etl_toolbox.database.orm import FONCTION_FILTER, LIMIT, ORDER_BY
 from nrcan_etl_toolbox.etl_logging import CustomLogger
-from dateutil import parser as date_parser
 
 T = TypeVar("T", bound="Base")  # noqa: F821
 
@@ -28,7 +30,7 @@ def db_safe(in_func):
 
 
 class AbstractDatabaseObjectsInterface:
-    def __init__(self, database_url: str=None, engine:sqlalchemy.engine.Engine=None, logger_level="DEBUG"):
+    def __init__(self, database_url: str = None, engine: sqlalchemy.engine.Engine = None, logger_level="DEBUG"):
         """
         Interface de base pour gérer les objets de base de données.
 
@@ -55,7 +57,7 @@ class AbstractDatabaseObjectsInterface:
     # Session manager
     # --------------------
     @contextmanager
-    def get_session(self) -> Generator[Session]:
+    def get_session(self) -> Generator[Session, Any, None]:
         session = Session(self.engine, expire_on_commit=False, autoflush=True)
         try:
             yield session
@@ -201,7 +203,7 @@ class AbstractDatabaseObjectsInterface:
             return False
 
     @db_safe
-    def _associate_elements(self, elements: list["Base"], associate_to: list["Base"]):
+    def _associate_elements(self, elements: list["Base"], associate_to: list["Base"]):  # noqa: F821
         for elt in elements:
             if elt and elt not in associate_to:
                 associate_to.append(elt)
