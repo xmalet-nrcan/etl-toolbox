@@ -10,7 +10,7 @@ class DatabaseConfig:
     port: int
     database: str
     user: str
-    _password: str = field(
+    password: str = field(
         default=os.getenv("DB_PASSWORD", ""),
         repr=False,
         metadata={"description": "Database password, default from env var DB_PASSWORD"},
@@ -27,9 +27,6 @@ class DatabaseConfig:
 
         return f"postgresql://{user}:{password}@{self.host}:{self.port}/{self.database}"
 
-    @property
-    def password(self):
-        return self._password
 
     def get_sqlalchemy_engine(self, **kwargs) -> sqlalchemy.engine.Engine:
         """
