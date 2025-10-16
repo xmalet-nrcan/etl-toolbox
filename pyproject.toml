@@ -11,19 +11,21 @@ readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10,<4"
 dependencies = [
-    "SQLAlchemy (>=2.0.40,<3.0.0)",
-    "sqlmodel (>=0.0.24,<0.0.25)",
+    "SQLAlchemy (>2.0.40)",
+    "sqlmodel (>0.0.25)",
     "pytest (>=8.0.0)"
     , "shapely"
     , "python-dotenv"
-    , "openpyxl (>=3.1.5,<4.0.0)"
+    , "openpyxl (>=3.1.5)"
     , "pandas"
     , "geopandas"
     , "fiona (>=1.10.1)"
-    , "geoalchemy2 (>=0.17.1,<0.18.0)"
-    , "psycopg2-binary (>=2.9.10,<3.0.0)"
-    , "tqdm (>=4.67.1,<5.0.0)"
-    , "ruff (>=0.11.10,<0.12.0)", "paramiko (>=3.5.1,<4.0.0)", "omegaconf (>=2.3.0,<3.0.0)"
+    , "geoalchemy2 (>0.17.1)"
+    , "psycopg2-binary (>2.9.10)"
+    , "tqdm (>=4.67.1)"
+    , "ruff (>=0.11.10)",
+    "paramiko (>=3.5.1)",
+    "omegaconf (>=2.3.0)"
 ]
 
 
