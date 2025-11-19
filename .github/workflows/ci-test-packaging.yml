@@ -27,4 +27,4 @@ jobs:
             key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
 
         - name: Install Dependencies
-          run: poetry install
+          run: poetry install -vvv
