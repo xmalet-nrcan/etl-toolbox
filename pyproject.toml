@@ -10,27 +10,25 @@ authors = [
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10,<4"
-
-[tool.poetry.dependencies]
-python = "^3.12"
-SQLAlchemy = ">2.0.40"
-sqlmodel = ">0.0.25"
-pytest = ">=8.0.0"
-shapely = "*"
-python-dotenv = "*"
-openpyxl = ">=3.1.5"
-pandas = "*"
-geopandas = "*"
-fiona = ">=1.10.1"
-geoalchemy2 = ">0.17.1"
-psycopg2-binary = ">2.9.10"
-tqdm = ">=4.67.1"
-ruff = ">=0.11.10"
-paramiko = ">=3.5.1"
-omegaconf = ">=2.3.0"
-pyodbc = { version = "*", markers = "sys_platform == 'win32'" }
-sqlalchemy-access = { version = "*", markers = "sys_platform == 'win32'" }
-pywin32 = { version = "*", markers = "sys_platform == 'win32'" }
+dependencies = [
+    "SQLAlchemy (>2.0.40)",
+    "sqlmodel (>0.0.25)",
+    "pytest (>=8.0.0)"
+    , "shapely"
+    , "python-dotenv"
+    , "openpyxl (>=3.1.5)"
+    , "pandas"
+    , "geopandas"
+    , "fiona (>=1.10.1)"
+    , "geoalchemy2 (>0.17.1)"
+    , "psycopg2-binary (>2.9.10)"
+    , "tqdm (>=4.67.1)"
+    , "ruff (>=0.11.10)",
+    "paramiko (>=3.5.1)",
+    "omegaconf (>=2.3.0)",
+    "pyodbc; sys_platform == 'win32'",
+    "sqlalchemy-access; sys_platform == 'win32'"
+]
 
 
 cache-dir = "./venv"
