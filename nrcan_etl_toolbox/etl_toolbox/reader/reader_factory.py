@@ -5,13 +5,7 @@ import pandas as pd
 from sqlalchemy import Connection, Engine
 from sqlalchemy.orm import Session
 
-from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.base_reader import BaseDataReader
-from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.csv_reader import CSVReader
-from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.excel_reader import ExcelReader
-from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.geopackage_reader import GeoPackageDataReader
-from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.json_reader import JSONReader
-from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.postgis_reader import PostGisTableDataReader
-from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.shapefile_reader import ShapefileReader
+from nrcan_etl_toolbox.etl_toolbox.reader.source_readers import *
 
 
 class ReaderFactory:
@@ -47,7 +41,7 @@ class ReaderFactory:
         return self._reader.columns
 
     @staticmethod
-    def _create_reader(input_source, schema=None, table_name=None, **kwargs) -> BaseDataReader:
+    def _create_reader(input_source, schema=None, table_name=None, **kwargs) -> "BaseDataReader":
         """
         Creates and returns an instance of a data reader.
 
@@ -85,5 +79,7 @@ class ReaderFactory:
                 return JSONReader(input_source, **kwargs)
             case ".shp":
                 return ShapefileReader(input_source, **kwargs)
+            case ".mdb" | ".accdb":
+                return MicrosoftAccessDatabaseReader(input_source, **kwargs)
             case _:
                 raise ValueError(f"Type de fichier non pris en charge ou source invalide : {extension}")

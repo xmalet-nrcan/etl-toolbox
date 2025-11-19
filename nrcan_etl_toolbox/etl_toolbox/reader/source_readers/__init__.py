@@ -5,7 +5,7 @@ from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.geopackage_reader impor
 from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.json_reader import JSONReader
 from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.postgis_reader import PostGisTableDataReader
 from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.shapefile_reader import ShapefileReader
-
+from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.access_db_reader import MicrosoftAccessDatabaseReader
 __all__ = [
     "BaseDataReader",
     "CSVReader",
@@ -14,4 +14,5 @@ __all__ = [
     "JSONReader",
     "PostGisTableDataReader",
     "ShapefileReader",
+    "MicrosoftAccessDatabaseReader"
 ]
