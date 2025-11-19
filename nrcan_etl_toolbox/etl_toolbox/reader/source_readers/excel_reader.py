@@ -21,7 +21,6 @@ class ExcelReader(BaseDataReader):
         self._original_file = pd.ExcelFile(
             self._input_source
         )  # 20250806 - Removed the `engine` parameter to allow pandas to choose the best engine automatically.
-        self.sheet_name = sheet_name
 
     def __del__(self):
         if self._original_file is not None:
