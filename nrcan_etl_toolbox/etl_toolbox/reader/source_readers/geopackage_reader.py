@@ -26,13 +26,13 @@ class GeoPackageDataReader(BaseDataReader):
         self._layer = layer
         self._encoding = encoding
         self._read_data(layer, encoding)
-        return self._dataframe
+        return self._dataframe   # noqa:
 
     @property
     def dataframe(self) -> gpd.GeoDataFrame:
         if self._dataframe is None:
             self._read_data(self._layer, self._encoding)
-        return self._dataframe
+        return self._dataframe # noqa
 
     @property
     def layers(self):
