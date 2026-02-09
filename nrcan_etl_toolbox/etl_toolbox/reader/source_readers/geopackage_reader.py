@@ -1,4 +1,3 @@
-import fiona
 import geopandas as gpd
 
 from nrcan_etl_toolbox.etl_toolbox.reader.source_readers.base_reader import BaseDataReader
@@ -12,7 +11,7 @@ class GeoPackageDataReader(BaseDataReader):
         self._encoding = encoding
 
     def _read_data(self, layer, encoding="utf-8"):
-        self._dataframe = gpd.read_file(self._input_source, layer=layer, encoding=layer)
+        self._dataframe = gpd.read_file(self._input_source, layer=layer)
 
     def read_layer(self, layer, encoding="utf-8") -> gpd.GeoDataFrame:
         self._layer = layer
@@ -29,5 +28,16 @@ class GeoPackageDataReader(BaseDataReader):
     @property
     def layers(self):
         if self._layers is None:
-            self._layers = fiona.listlayers(self._input_source)
+            try:
+                import sqlite3
+            except ImportError:
+                raise ImportError("sqlite3 module is required to read layers from a GeoPackage file.")
+            with sqlite3.connect(self._input_source) as conn:
+                cursor = conn.execute("""
+                                      SELECT table_name
+                                      FROM gpkg_contents
+                                      ORDER BY table_name;
+                                      """)
+                self._layers = [row[0] for row in cursor.fetchall()]
         return self._layers
+
