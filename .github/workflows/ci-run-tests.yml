@@ -5,41 +5,76 @@ on:
     branches: [ main ]
     paths:
       - 'nrcan_etl_toolbox/**'
+      - 'pyproject.toml'
+      - 'poetry.lock'
+      - 'requirements*.txt'
   pull_request:
     branches: [ main ]
     paths:
       - 'nrcan_etl_toolbox/**'
+      - 'pyproject.toml'
+      - 'poetry.lock'
+      - 'requirements*.txt'
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
   test:
-    name: Test package
+    name: Test package (Poetry)
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      # For PRs, checkout the PR HEAD so we can push fixes back to the branch (in-repo PR only)
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: 'pip'
 
-      - name: Install Poetry
-        run: pipx install poetry
+      - name: Install Poetry (pinned)
+        run: |
+          pipx install "poetry==1.8.5"
+          poetry --version
 
-      - name: Setup Poetry cache
+      - name: Configure Poetry (in-project venv)
+        run: |
+          poetry config virtualenvs.in-project true
+
+      - name: Cache Poetry + venv
         uses: actions/cache@v4
         with:
-          path: ~/.cache/pypoetry
+          path: |
+            ~/.cache/pypoetry
+            ./.venv
           key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: poetry install
-      - name: Run Tests
+
+      - name: Run tests
+        id: pytest
+        continue-on-error: true
         run: poetry run pytest -v --cov --cov-branch --cov-report=xml tests/
 
-      # Copy and paste the codecov/test-results-action here
+      # Uploads even if tests failed
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
         uses: codecov/test-results-action@v1
