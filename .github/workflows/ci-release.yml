@@ -1,39 +1,50 @@
 name: ci-test-build-release
-permissions:
-  contents: write
+
 on:
   push:
     tags:
-      - 'v*.*.*'
-    paths-ignore:
-      - 'pyproject.toml' # Ignore les modifications de ce fichier pour éviter les boucles
-  pull_request:
-    tags:
-      - 'v*.*.*'
-    paths-ignore:
-        - 'pyproject.toml' # Ignore les modifications de ce fichier pour éviter les boucles
+      - "v*.*.*"
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
-
   test:
-    if:  "!contains(github.event.head_commit.message, 'chore: bump version')"
-
-    name: Tests
+    name: Tests (tag)
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-          cache: 'pip'
+          python-version: "3.12"
+          cache: "pip"
 
-      - name: Install Poetry
-        run: pipx install poetry
+      - name: Install Poetry (pinned)
+        run: |
+          pipx install "poetry==1.8.5"
+          poetry --version
 
-      - name: Setup Poetry cache
+      - name: Cache Poetry + venv
         uses: actions/cache@v4
         with:
-          path: ~/.cache/pypoetry
+          path: |
+            ~/.cache/pypoetry
+            ./.venv
           key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Configure Poetry (in-project venv)
+        run: poetry config virtualenvs.in-project true
 
       - name: Install Dependencies
         run: poetry install
@@ -41,55 +52,73 @@ jobs:
       - name: Run Tests
         run: poetry run pytest -v --cov --cov-branch --cov-report=xml tests/
 
-      # Copy and paste the codecov/test-results-action here
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
         uses: codecov/test-results-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
-
   build:
-    name: Build Package
-    needs: [ test ]
+    name: Build Package (tag)
+    needs: [test]
     runs-on: ubuntu-latest
-    if: success() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    permissions:
+      contents: write
+    outputs:
+      release_branch: ${{ steps.branch.outputs.name }}
+      version: ${{ steps.tag_version.outputs.version }}
+
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: main
-          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-          cache: 'pip'
+          python-version: "3.12"
+          cache: "pip"
 
-      - name: Install Poetry
-        run: pipx install poetry
+      - name: Install Poetry (pinned)
+        run: |
+          pipx install "poetry==1.8.5"
+          poetry --version
 
       - name: Extract tag version
         id: tag_version
         if: startsWith(github.ref, 'refs/tags/v')
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
+      # ✅ Tu voulais garder ceci
       - name: Update version in pyproject.toml
         if: startsWith(github.ref, 'refs/tags/v')
         run: poetry version ${{ steps.tag_version.outputs.version }}
 
-      - name: Commit version bump
+      - name: Create release branch name
+        id: branch
+        run: echo "name=release/${{ github.ref_name }}" >> $GITHUB_OUTPUT
+
+      - name: Commit & push version bump to release branch
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
+          set -euo pipefail
+
+          if git diff --quiet; then
+            echo "No version change to commit."
+            exit 0
+          fi
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout -b "${{ steps.branch.outputs.name }}"
           git add pyproject.toml
-          git commit -m "chore: bump version to ${{ steps.tag_version.outputs.version }}" || echo "No changes to commit"
-          git push origin main
+          git commit -m "chore: bump version to ${{ steps.tag_version.outputs.version }} [skip ci]"
+          git push -u origin "${{ steps.branch.outputs.name }}"
 
       - name: Build Package
         run: poetry build
@@ -102,8 +131,8 @@ jobs:
           retention-days: 7
 
   release:
-    name: Create GitHub Release
-    needs: [ build ]
+    name: Create GitHub Release + Publish PyPI
+    needs: [build]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
@@ -111,6 +140,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Download Build Artifacts
         uses: actions/download-artifact@v4
@@ -123,17 +154,13 @@ jobs:
         with:
           name: "Release ${{ github.ref_name }}"
           tag_name: ${{ github.ref_name }}
-          body: |
-            🚀 **Release ${{ github.ref_name }}**
-            
-            Cette release a été générée automatiquement par le workflow CI.
           files: dist/*
           generate_release_notes: true
           draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publier sur PyPI
+      - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@v1.13.0
         with:
           user: __token__
