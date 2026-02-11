@@ -7,18 +7,32 @@ on:
       - 'nrcan_etl_toolbox/etl_logging/**'
       - 'nrcan_etl_toolbox/database/**'
       - 'nrcan_etl_toolbox/etl_toolbox/reader/**'
+      - 'pyproject.toml'
+      - 'requirements*.txt'
   pull_request:
     branches: [ main ]
     paths:
       - 'nrcan_etl_toolbox/etl_logging/**'
       - 'nrcan_etl_toolbox/database/**'
       - 'nrcan_etl_toolbox/etl_toolbox/reader/**'
+      - 'pyproject.toml'
+      - 'requirements*.txt'
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
-  lint:
-    name: Ruff Lint
+  ruff:
+    name: Ruff (lint + format)
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         target:
           - path: ./nrcan_etl_toolbox/etl_logging
@@ -27,36 +41,82 @@ jobs:
             name: Database
           - path: ./nrcan_etl_toolbox/etl_toolbox/reader
             name: Data Reader
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      # Checkout the right ref:
+      # - push: current ref
+      # - PR: the head branch (so we can push fixes back to the PR branch when it's in-repo)
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-      - run: pip install ruff
-      - name: Ruff check -- ${{ matrix.target.name }}
+          cache: 'pip'
+
+      - name: Install Ruff (pinned)
+        run: pip install ruff==0.6.8
+
+      # --- Lint + Format (check-only) ---
+      - name: Ruff lint -- ${{ matrix.target.name }}
+        id: ruff_lint
+        continue-on-error: true
         run: ruff check ${{ matrix.target.path }} --output-format=github
 
-  format:
-    name: Ruff Format Check
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        target:
-          - path: ./nrcan_etl_toolbox/etl_logging
-            name: Logging
-          - path: ./nrcan_etl_toolbox/database
-            name: Database
-          - path: ./nrcan_etl_toolbox/etl_toolbox/reader
-            name: Data Reader
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - run: pip install ruff
-      - name: Ruff format -- ${{ matrix.target.name }}
+      - name: Ruff format --check -- ${{ matrix.target.name }}
+        id: ruff_fmt
+        continue-on-error: true
+        run: ruff format --check ${{ matrix.target.path }}
+
+      # --- Auto-fix when failures occur ---
+      # We only push changes when:
+      # - push to main, OR
+      # - pull_request from a branch within the same repo (not forks)
+      - name: Apply Ruff fixes (format + lint fixes)
+        if: steps.ruff_lint.outcome == 'failure' || steps.ruff_fmt.outcome == 'failure'
+        run: |
+          ruff format ${{ matrix.target.path }}
+          ruff check --fix ${{ matrix.target.path }}
+
+      - name: Commit & push fixes
+        if: |
+          (steps.ruff_lint.outcome == 'failure' || steps.ruff_fmt.outcome == 'failure') &&
+          (
+            (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+            (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+          )
+        env:
+          HEAD_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+          # Prevent CI loops on the auto-fix commit
+          git commit -m "chore(ruff): auto-fix lint/format [skip ci]"
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git push origin "HEAD:${HEAD_REF}"
+          else
+            git push origin "HEAD:main"
+          fi
+
+      # Re-run checks so the job reflects the post-fix state
+      - name: Ruff lint (post-fix) -- ${{ matrix.target.name }}
+        if: steps.ruff_lint.outcome == 'failure' || steps.ruff_fmt.outcome == 'failure'
+        run: ruff check ${{ matrix.target.path }} --output-format=github
+
+      - name: Ruff format --check (post-fix) -- ${{ matrix.target.name }}
+        if: steps.ruff_lint.outcome == 'failure' || steps.ruff_fmt.outcome == 'failure'
         run: ruff format --check ${{ matrix.target.path }}
