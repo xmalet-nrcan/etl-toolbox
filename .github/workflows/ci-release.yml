@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - "v*.*.*"
+    paths-ignore:
+      - 'pyproject.toml'
   workflow_dispatch:
 
 concurrency:
@@ -40,7 +42,6 @@ jobs:
         with:
           path: |
             ~/.cache/pypoetry
-            ./.venv
           key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
 
       - name: Configure Poetry (in-project venv)
@@ -50,7 +51,7 @@ jobs:
         run: poetry install
 
       - name: Run Tests
-        run: poetry run pytest -v --cov --cov-branch --cov-report=xml tests/
+        run: poetry run pytest -v --cov --cov-branch --cov-report=xml --junitxml=junit.xml tests/
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
@@ -93,7 +94,6 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      # ✅ Tu voulais garder ceci
       - name: Update version in pyproject.toml
         if: startsWith(github.ref, 'refs/tags/v')
         run: poetry version ${{ steps.tag_version.outputs.version }}
