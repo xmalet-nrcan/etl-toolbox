@@ -1,3 +1,4 @@
+import re
 from collections.abc import Generator
 from contextlib import contextmanager
 from typing import Any, Optional, TypeVar
@@ -201,6 +202,45 @@ class AbstractDatabaseObjectsInterface:
             return True
         except (ValueError, TypeError):
             return False
+
+    @staticmethod
+    # Clean the values – extract patterns like YYYY or YYYY-MM-DD
+    def normalize_date(input_date: str) -> str | None:
+        """
+        Static method used to normalize a date string.
+        This method use regular expressions to find patterns like
+        - YYYY
+        - YYYY-MM
+        - YYYY-MM-DD in the input string and return a normalized date string in the format YYYY-MM-DD.
+
+        if months and days are not provided:
+        the normalization method add 01 to replace them.
+        Args:
+            input_date: The string to normalize.
+        Returns:
+            Normalized date string in the format YYYY-MM-DD or None if no valid date pattern is found.
+        """
+        # Try to find YYYY-MM-DD
+        match_full = re.search(r"\d{4}-\d{2}-\d{2}", input_date)
+        match_year_month = re.search(r"\d{4}-\d{2}", input_date)
+        match_month_year = re.search(r"\d{2}-\d{4}", input_date)
+        match_year = re.search(r"\d{4}", input_date)
+
+        # Try to find just YYYY-MM-dd
+        if match_full:
+            return match_full.group(0)
+        # Try to find just YYYY-MM
+        elif match_year_month:
+            return match_year_month.group(0) + "-01"
+        # Try to find just MM-YYYY
+        elif match_month_year:
+            parts = match_month_year.group(0).split("-")
+            return f"{parts[1]}-{parts[0]}-01"
+        # Try to find just YYYY
+        elif match_year:
+            return match_year.group(0) + "-01-01"
+        else:
+            return None  # If nothing matches
 
     @db_safe
     def _associate_elements(self, elements: list["Base"], associate_to: list["Base"]):  # noqa: F821
