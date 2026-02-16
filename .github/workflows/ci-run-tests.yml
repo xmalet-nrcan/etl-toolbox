@@ -15,15 +15,7 @@ on:
       - 'pyproject.toml'
       - 'poetry.lock'
       - 'requirements*.txt'
-  workflow_dispatch:
 
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-permissions:
-  contents: write
-  pull-requests: write
 
 jobs:
   test:
@@ -34,9 +26,6 @@ jobs:
       # For PRs, checkout the PR HEAD so we can push fixes back to the branch (in-repo PR only)
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -46,19 +35,14 @@ jobs:
 
       - name: Install Poetry (pinned)
         run: |
-          pipx install "poetry==1.8.5"
+          pipx install poetry
           poetry --version
 
-      - name: Configure Poetry (in-project venv)
-        run: |
-          poetry config virtualenvs.in-project true
-
-      - name: Cache Poetry + venv
+      - name: Setup Poetry cache
         uses: actions/cache@v4
         with:
           path: |
             ~/.cache/pypoetry
-            ./.venv
           key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
 
       - name: Install dependencies
@@ -76,7 +60,8 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload test results to Codecov
-        if: ${{ !cancelled() }}
-        uses: codecov/test-results-action@v1
+        if: always()
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
