@@ -5,7 +5,14 @@ import pandas as pd
 from sqlalchemy import Connection, Engine
 from sqlalchemy.orm import Session
 
-from nrcan_etl_toolbox.etl_toolbox.reader.source_readers import *
+from nrcan_etl_toolbox.etl_toolbox.reader.source_readers import (
+    ExcelReader,
+    CSVReader,
+    JSONReader,
+    ShapefileReader,
+    PostGisTableDataReader,
+    GeoPackageDataReader,
+    MicrosoftAccessDatabaseReader)
 
 
 class ReaderFactory:
@@ -15,11 +22,11 @@ class ReaderFactory:
     """
 
     def __init__(
-        self,
-        input_source: str | Engine | Session | Connection | pathlib.Path = None,
-        schema=None,
-        table_name=None,
-        **kwargs: dict[str, str] | None,
+            self,
+            input_source: str | Engine | Session | Connection | pathlib.Path = None,
+            schema=None,
+            table_name=None,
+            **kwargs: dict[str, str] | None,
     ):
         self._input_source = input_source
 
