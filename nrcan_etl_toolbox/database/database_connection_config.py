@@ -27,7 +27,6 @@ class DatabaseConfig:
 
         return f"postgresql://{user}:{password}@{self.host}:{self.port}/{self.database}"
 
-
     def get_sqlalchemy_engine(self, **kwargs) -> sqlalchemy.engine.Engine:
         """
         Build a SQLAlchemy Engine directly.
