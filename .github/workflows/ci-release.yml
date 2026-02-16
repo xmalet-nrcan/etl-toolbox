@@ -63,17 +63,12 @@ jobs:
     needs: [test]
     runs-on: ubuntu-latest
     if: success() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
-
-    permissions:
-      contents: write
-    outputs:
-      release_branch: ${{ steps.branch.outputs.name }}
-      version: ${{ steps.tag_version.outputs.version }}
-
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: main
+          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-python@v5
         with:
@@ -82,7 +77,7 @@ jobs:
 
       - name: Install Poetry (pinned)
         run: |
-          pipx install "poetry==1.8.5"
+          pipx install poetry
           poetry --version
 
       - name: Extract tag version
@@ -94,27 +89,14 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: poetry version ${{ steps.tag_version.outputs.version }}
 
-      - name: Create release branch name
-        id: branch
-        run: echo "name=release/${{ github.ref_name }}" >> $GITHUB_OUTPUT
-
-      - name: Commit & push version bump to release branch
+      - name: Commit version bump
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          set -euo pipefail
-
-          if git diff --quiet; then
-            echo "No version change to commit."
-            exit 0
-          fi
-
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          git checkout -b "${{ steps.branch.outputs.name }}"
           git add pyproject.toml
-          git commit -m "chore: bump version to ${{ steps.tag_version.outputs.version }} [skip ci]"
-          git push -u origin "${{ steps.branch.outputs.name }}"
+          git commit -m "chore: bump version to ${{ steps.tag_version.outputs.version }}" || echo "No changes to commit"
+          git push origin main
 
       - name: Build Package
         run: poetry build
